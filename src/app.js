@@ -16,31 +16,22 @@ export class App {
     }
 
     crawl() {
-        let self = this;
-        // setTimeout(function () {
-        self.drawSegment(self.snake.segments[0]);
-        self.stepTimerHandle = setInterval(function () {
-            self.snake.segments[0].x++;
-            self.drawSegment(self.snake.segments[0]);
+        this.stepTimerHandle = setInterval(() => {
+            this.snake.segments[0].x++;
+            this.drawSnake();
+            this.drawSegment(this.snake.segments[0]);
         }, 100);
-        // }, 100);
     }
 
-    initSnake() {
-        let canvasCenter = {
-            x: parseInt(this.$arena.width() / 2, 10),
-            y: parseInt(this.$arena.height() / 2, 10)
-        };
-        let head = {
-            img: this.$head[0],
-            x: canvasCenter.x,
-            y: canvasCenter.y
+    drawSnake() {
+        for (let i = 0; i < this.snake.segments.length; i++) {
+            let segment = this.snake.segments[i];
+            this.drawSegment(segment);
         }
-        this.snake.segments.push(head);
     }
 
     drawSegment(imgObj) {
-        let ctx = this.canvas.getContext('2d');
+        let ctx = this.ctx;
         let offsetX = -imgObj.img.clientWidth;
         let offsetY = -imgObj.img.clientHeight;
         ctx.save();
@@ -49,20 +40,40 @@ export class App {
         ctx.restore();
     }
 
+    initSnake() {
+        let canvasCenter = {
+            x: parseInt(this.$arena.width() / 2, 10),
+            y: parseInt(this.$arena.height() / 2, 10)
+        };
+        for (let i = 0; i < this.snakeImages.length; i++) {
+            let $img = this.snakeImages[i];
+            let segment = {
+                img: $img[0],
+                x: canvasCenter.x,
+                y: canvasCenter.y
+            }
+            this.snake.segments.push(segment);
+        }
+    }
+
     setDomVars() {
         this.$arena = $('.arena');
         this.canvas = document.getElementById('arena');
+        this.ctx = this.canvas.getContext('2d');
         this.canvas.width = this.canvas.clientWidth;
         this.canvas.height = this.canvas.clientHeight;
-        this.$head = $('.head');
+        this.snakeImages = [
+            $('.body'),
+            $('.head'),
+            $('.tail')
+        ]
     }
 
     attached() {
-        let self = this;
         this.setDomVars();
         this.initSnake();
-        $(function () {
-            self.crawl();
+        $(() => {
+            this.crawl();
         });
     }
 }
