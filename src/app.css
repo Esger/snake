@@ -1,10 +1,10 @@
 body {
-    position        : relative;
-    background-color: black;
+    position: relative;
 }
 
 .gameTitle {
     position      : absolute;
+    z-index       : 2;
     top           : 0;
     width         : 100vw;
     font-family   : 'Trebuchet MS', sans-serif;
@@ -16,8 +16,17 @@ body {
 }
 
 .arena {
-    width     : 100vw;
-    height    : 100vh;
-    box-sizing: border-box;
-    border    : 30px solid crimson;
+    position        : relative;
+    z-index         : 1;
+    width           : calc(100vw - 60px);
+    height          : calc(100vh - 60px);
+    background-color: black;
+    border          : 30px solid crimson;
+}
+
+.snakeImages {
+    position: absolute;
+    top     : 0;
+    left    : 0;
+    z-index : 0;
 }
