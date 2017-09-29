@@ -9,35 +9,65 @@ export class App {
 
     constructor() {
         this.message = 'Snake by ashWare';
+        this.spriteSize = 16;
         this.stepTimerHandle = null;
         this.snake = {
-            segments: []
+            direction: 0,
+            directions: [
+                [1, 0],
+                [0, 1],
+                [-1, 0],
+                [0, -1]
+            ],
+            images: [],
+            segments: [],
+            stepInterval: 10
         }
     }
 
     crawl() {
         this.stepTimerHandle = setInterval(() => {
-            this.snake.segments[0].x++;
             this.drawSnake();
-            this.drawSegment(this.snake.segments[0]);
-        }, 100);
+        }, this.snake.stepInterval);
     }
 
     drawSnake() {
+        this.fadeArena();
         for (let i = 0; i < this.snake.segments.length; i++) {
             let segment = this.snake.segments[i];
+            (i == 0) ? this.advanceSegment(i) : this.followSegment(i, i - 1);
             this.drawSegment(segment);
+        }
+    }
+
+    advanceSegment(i) {
+        this.snake.segments[i].position[0] += this.snake.directions[this.snake.direction][0];
+        this.snake.segments[i].position[1] += this.snake.directions[this.snake.direction][1];
+    }
+
+    followSegment(i, j) {
+        let segment = this.snake.segments[i];
+        let preceder = this.snake.segments[j];
+        let dx = preceder.position[0] - segment.position[0];
+        if (dx !== 0) {
+            let absDx = Math.abs(dx)
+            let stepX = Math.round(absDx / dx);
+            (absDx > this.spriteSize) ? segment.position[0] += stepX : null;
         }
     }
 
     drawSegment(imgObj) {
         let ctx = this.ctx;
-        let offsetX = -imgObj.img.clientWidth;
-        let offsetY = -imgObj.img.clientHeight;
         ctx.save();
-        ctx.translate(imgObj.x, imgObj.y);
-        ctx.drawImage(imgObj.img, offsetX, offsetY);
+        ctx.translate(imgObj.position[0], imgObj.position[1]);
+        ctx.drawImage(this.snake.images[imgObj.imgIndex], this.spriteSize, this.spriteSize);
         ctx.restore();
+    }
+
+    fadeArena() {
+        let ctx = this.ctx;
+        ctx.fillStyle = 'rgba(0,0,0,.1)';
+        ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
     }
 
     initSnake() {
@@ -45,12 +75,11 @@ export class App {
             x: parseInt(this.$arena.width() / 2, 10),
             y: parseInt(this.$arena.height() / 2, 10)
         };
-        for (let i = 0; i < this.snakeImages.length; i++) {
-            let $img = this.snakeImages[i];
+        for (let i = 0; i < this.snake.images.length; i++) {
+            let $img = this.snake.images[i];
             let segment = {
-                img: $img[0],
-                x: canvasCenter.x,
-                y: canvasCenter.y
+                imgIndex: i,
+                position: [canvasCenter.x, canvasCenter.y]
             }
             this.snake.segments.push(segment);
         }
@@ -62,10 +91,10 @@ export class App {
         this.ctx = this.canvas.getContext('2d');
         this.canvas.width = this.canvas.clientWidth;
         this.canvas.height = this.canvas.clientHeight;
-        this.snakeImages = [
-            $('.body'),
-            $('.head'),
-            $('.tail')
+        this.snake.images = [
+            $('.head')[0],
+            $('.body')[0],
+            $('.tail')[0]
         ]
     }
 

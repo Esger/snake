@@ -25,9 +25,14 @@ define('app',['exports', 'aurelia-framework', 'jquery'], function (exports, _aur
             _classCallCheck(this, App);
 
             this.message = 'Snake by ashWare';
+            this.spriteSize = 16;
             this.stepTimerHandle = null;
             this.snake = {
-                segments: []
+                direction: 0,
+                directions: [[1, 0], [0, 1], [-1, 0], [0, -1]],
+                images: [],
+                segments: [],
+                stepInterval: 10
             };
         }
 
@@ -35,27 +40,47 @@ define('app',['exports', 'aurelia-framework', 'jquery'], function (exports, _aur
             var _this = this;
 
             this.stepTimerHandle = setInterval(function () {
-                _this.snake.segments[0].x++;
                 _this.drawSnake();
-                _this.drawSegment(_this.snake.segments[0]);
-            }, 100);
+            }, this.snake.stepInterval);
         };
 
         App.prototype.drawSnake = function drawSnake() {
+            this.fadeArena();
             for (var i = 0; i < this.snake.segments.length; i++) {
                 var segment = this.snake.segments[i];
+                i == 0 ? this.advanceSegment(i) : this.followSegment(i, i - 1);
                 this.drawSegment(segment);
+            }
+        };
+
+        App.prototype.advanceSegment = function advanceSegment(i) {
+            this.snake.segments[i].position[0] += this.snake.directions[this.snake.direction][0];
+            this.snake.segments[i].position[1] += this.snake.directions[this.snake.direction][1];
+        };
+
+        App.prototype.followSegment = function followSegment(i, j) {
+            var segment = this.snake.segments[i];
+            var preceder = this.snake.segments[j];
+            var dx = preceder.position[0] - segment.position[0];
+            if (dx !== 0) {
+                var absDx = Math.abs(dx);
+                var stepX = Math.round(absDx / dx);
+                absDx > this.spriteSize ? segment.position[0] += stepX : null;
             }
         };
 
         App.prototype.drawSegment = function drawSegment(imgObj) {
             var ctx = this.ctx;
-            var offsetX = -imgObj.img.clientWidth;
-            var offsetY = -imgObj.img.clientHeight;
             ctx.save();
-            ctx.translate(imgObj.x, imgObj.y);
-            ctx.drawImage(imgObj.img, offsetX, offsetY);
+            ctx.translate(imgObj.position[0], imgObj.position[1]);
+            ctx.drawImage(this.snake.images[imgObj.imgIndex], this.spriteSize, this.spriteSize);
             ctx.restore();
+        };
+
+        App.prototype.fadeArena = function fadeArena() {
+            var ctx = this.ctx;
+            ctx.fillStyle = 'rgba(0,0,0,.1)';
+            ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
         };
 
         App.prototype.initSnake = function initSnake() {
@@ -63,12 +88,11 @@ define('app',['exports', 'aurelia-framework', 'jquery'], function (exports, _aur
                 x: parseInt(this.$arena.width() / 2, 10),
                 y: parseInt(this.$arena.height() / 2, 10)
             };
-            for (var i = 0; i < this.snakeImages.length; i++) {
-                var $img = this.snakeImages[i];
+            for (var i = 0; i < this.snake.images.length; i++) {
+                var $img = this.snake.images[i];
                 var segment = {
-                    img: $img[0],
-                    x: canvasCenter.x,
-                    y: canvasCenter.y
+                    imgIndex: i,
+                    position: [canvasCenter.x, canvasCenter.y]
                 };
                 this.snake.segments.push(segment);
             }
@@ -80,7 +104,7 @@ define('app',['exports', 'aurelia-framework', 'jquery'], function (exports, _aur
             this.ctx = this.canvas.getContext('2d');
             this.canvas.width = this.canvas.clientWidth;
             this.canvas.height = this.canvas.clientHeight;
-            this.snakeImages = [(0, _jquery2.default)('.body'), (0, _jquery2.default)('.head'), (0, _jquery2.default)('.tail')];
+            this.snake.images = [(0, _jquery2.default)('.head')[0], (0, _jquery2.default)('.body')[0], (0, _jquery2.default)('.tail')[0]];
         };
 
         App.prototype.attached = function attached() {
