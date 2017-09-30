@@ -1,4 +1,4 @@
-define('app',['exports', 'aurelia-framework', 'jquery'], function (exports, _aureliaFramework, _jquery) {
+define('app',['exports', 'aurelia-framework', 'aurelia-event-aggregator', 'jquery', './keystroke-service'], function (exports, _aureliaFramework, _aureliaEventAggregator, _jquery, _keystrokeService) {
     'use strict';
 
     Object.defineProperty(exports, "__esModule", {
@@ -20,10 +20,14 @@ define('app',['exports', 'aurelia-framework', 'jquery'], function (exports, _aur
         }
     }
 
-    var App = exports.App = function () {
-        function App() {
+    var _dec, _class;
+
+    var App = exports.App = (_dec = (0, _aureliaFramework.inject)(_keystrokeService.KeystrokeService, _aureliaEventAggregator.EventAggregator), _dec(_class = function () {
+        function App(keystrokeService, eventAggregator) {
             _classCallCheck(this, App);
 
+            this.keystrokeService = keystrokeService;
+            this.ea = eventAggregator;
             this.message = 'Snake by ashWare';
             this.spriteSize = 16;
             this.stepTimerHandle = null;
@@ -32,7 +36,7 @@ define('app',['exports', 'aurelia-framework', 'jquery'], function (exports, _aur
                 directions: [[1, 0], [0, 1], [-1, 0], [0, -1]],
                 images: [],
                 segments: [],
-                stepInterval: 10
+                stepInterval: 500
             };
         }
 
@@ -40,11 +44,11 @@ define('app',['exports', 'aurelia-framework', 'jquery'], function (exports, _aur
             var _this = this;
 
             this.stepTimerHandle = setInterval(function () {
-                _this.drawSnake();
+                _this.stepNdraw();
             }, this.snake.stepInterval);
         };
 
-        App.prototype.drawSnake = function drawSnake() {
+        App.prototype.stepNdraw = function stepNdraw() {
             this.fadeArena();
             for (var i = 0; i < this.snake.segments.length; i++) {
                 var segment = this.snake.segments[i];
@@ -62,10 +66,16 @@ define('app',['exports', 'aurelia-framework', 'jquery'], function (exports, _aur
             var segment = this.snake.segments[i];
             var preceder = this.snake.segments[j];
             var dx = preceder.position[0] - segment.position[0];
+            var dy = preceder.position[1] - segment.position[1];
             if (dx !== 0) {
                 var absDx = Math.abs(dx);
                 var stepX = Math.round(absDx / dx);
                 absDx > this.spriteSize ? segment.position[0] += stepX : null;
+            }
+            if (dy !== 0) {
+                var absDy = Math.abs(dy);
+                var stepY = Math.round(absDy / dy);
+                absDy > this.spriteSize ? segment.position[1] += stepY : null;
             }
         };
 
@@ -73,6 +83,7 @@ define('app',['exports', 'aurelia-framework', 'jquery'], function (exports, _aur
             var ctx = this.ctx;
             ctx.save();
             ctx.translate(imgObj.position[0], imgObj.position[1]);
+
             ctx.drawImage(this.snake.images[imgObj.imgIndex], this.spriteSize, this.spriteSize);
             ctx.restore();
         };
@@ -81,6 +92,29 @@ define('app',['exports', 'aurelia-framework', 'jquery'], function (exports, _aur
             var ctx = this.ctx;
             ctx.fillStyle = 'rgba(0,0,0,.1)';
             ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        };
+
+        App.prototype.setSubscribers = function setSubscribers() {
+            var _this2 = this;
+
+            this.ea.subscribe('keyPressed', function (response) {
+                switch (response) {
+                    case 'ArrowRight':
+                        _this2.snake.direction = 0;
+                        break;
+                    case 'ArrowDown':
+                        _this2.snake.direction = 1;
+                        break;
+                    case 'ArrowLeft':
+                        _this2.snake.direction = 2;
+                        break;
+                    case 'ArrowUp':
+                        _this2.snake.direction = 3;
+                        break;
+                    default:
+                        null;
+                }
+            });
         };
 
         App.prototype.initSnake = function initSnake() {
@@ -108,17 +142,18 @@ define('app',['exports', 'aurelia-framework', 'jquery'], function (exports, _aur
         };
 
         App.prototype.attached = function attached() {
-            var _this2 = this;
+            var _this3 = this;
 
             this.setDomVars();
             this.initSnake();
+            this.setSubscribers();
             (0, _jquery2.default)(function () {
-                _this2.crawl();
+                _this3.crawl();
             });
         };
 
         return App;
-    }();
+    }()) || _class);
 });
 define('environment',["exports"], function (exports) {
   "use strict";
@@ -130,6 +165,67 @@ define('environment',["exports"], function (exports) {
     debug: true,
     testing: true
   };
+});
+define('keystroke-service',['exports', 'aurelia-framework', 'aurelia-event-aggregator'], function (exports, _aureliaFramework, _aureliaEventAggregator) {
+    'use strict';
+
+    Object.defineProperty(exports, "__esModule", {
+        value: true
+    });
+    exports.KeystrokeService = undefined;
+
+    function _classCallCheck(instance, Constructor) {
+        if (!(instance instanceof Constructor)) {
+            throw new TypeError("Cannot call a class as a function");
+        }
+    }
+
+    var _dec, _class;
+
+    var KeystrokeService = exports.KeystrokeService = (_dec = (0, _aureliaFramework.inject)(_aureliaEventAggregator.EventAggregator), _dec(_class = function () {
+        function KeystrokeService(eventAggregator) {
+            _classCallCheck(this, KeystrokeService);
+
+            this.ea = eventAggregator;
+            this.acceptMoves = true;
+            this.keys = {
+                'left': 37,
+                'up': 38,
+                'right': 39,
+                'down': 40
+            };
+            this.myKeypressCallback = this.keypressInput.bind(this);
+            this.setSubscribers();
+        }
+
+        KeystrokeService.prototype.keysOff = function keysOff() {
+            this.acceptMoves = false;
+        };
+
+        KeystrokeService.prototype.keysOn = function keysOn() {
+            this.acceptMoves = true;
+        };
+
+        KeystrokeService.prototype.setSubscribers = function setSubscribers() {
+            var _this = this;
+
+            document.addEventListener('keydown', this.myKeypressCallback, false);
+            this.ea.subscribe('keysOff', function (response) {
+                _this.keysOff();
+            });
+            this.ea.subscribe('keysOn', function (response) {
+                _this.keysOn();
+            });
+        };
+
+        KeystrokeService.prototype.keypressInput = function keypressInput(e) {
+            console.log(e);
+            var keycode = event.key;
+            this.ea.publish('keyPressed', keycode);
+        };
+
+        return KeystrokeService;
+    }()) || _class);
 });
 define('main',['exports', './environment'], function (exports, _environment) {
   'use strict';
