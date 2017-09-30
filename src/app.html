@@ -1,6 +1,7 @@
 <template>
     <require from="reset.css"></require>
     <require from="app.css"></require>
+    <require from="components/restart-overlay"></require>
     <h1 class="gameTitle">${message}</h1>
     <canvas id="arena"
             class="arena"></canvas>
@@ -12,4 +13,5 @@
         <img class="tail"
              src="/images/tail.png">
     </div>
+    <restart-overlay></restart-overlay>
 </template>

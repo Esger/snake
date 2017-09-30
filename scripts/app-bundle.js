@@ -30,8 +30,11 @@ define('app',['exports', 'aurelia-framework', 'aurelia-event-aggregator', 'jquer
             this.ea = eventAggregator;
             this.accelleration = 1.01;
             this.message = 'Snake by ashWare';
+            this.pause = false;
+            this.crawling = false;
             this.spriteSize = 16;
             this.stepTimerHandle = null;
+            this.fallTimerHandle = null;
             this.snake = {
                 directions: [[1, 0], [0, 1], [-1, 0], [0, -1], [0, 0]],
                 deadSegments: 0,
@@ -50,12 +53,13 @@ define('app',['exports', 'aurelia-framework', 'aurelia-event-aggregator', 'jquer
             this.stepTimerHandle = setInterval(function () {
                 _this.stepNdraw();
             }, this.snake.stepInterval);
+            this.crawling = true;
         };
 
         App.prototype.fall = function fall() {
             var _this2 = this;
 
-            this.stepTimerHandle = setInterval(function () {
+            this.fallTimerHandle = setInterval(function () {
                 _this2.fallNdraw();
             }, 0);
         };
@@ -85,8 +89,9 @@ define('app',['exports', 'aurelia-framework', 'aurelia-event-aggregator', 'jquer
                 }
             }
             if (this.snake.deadSegments >= this.snake.segments.length) {
-                clearInterval(this.stepTimerHandle);
                 this.gameOver();
+                clearInterval(this.fallTimerHandle);
+                this.keysOn();
             }
         };
 
@@ -96,10 +101,13 @@ define('app',['exports', 'aurelia-framework', 'aurelia-event-aggregator', 'jquer
 
         App.prototype.wallHit = function wallHit() {
             var head = this.snake.segments[0];
-            return head.position[0] > this.canvas.width || head.position[0] < 0 || head.position[1] > this.canvas.height || head.position[1] < 0;
+            var halfSprite = this.spriteSize / 2;
+            return head.position[0] > this.canvas.width - halfSprite || head.position[0] < 0 + halfSprite || head.position[1] > this.canvas.height - halfSprite || head.position[1] < 0 + halfSprite;
         };
 
         App.prototype.die = function die() {
+            this.keysOff();
+            this.crawling = false;
             clearInterval(this.stepTimerHandle);
             for (var i = 0; i < this.snake.segments.length; i++) {
                 this.snake.segments[i].direction = 1;
@@ -108,14 +116,14 @@ define('app',['exports', 'aurelia-framework', 'aurelia-event-aggregator', 'jquer
         };
 
         App.prototype.gameOver = function gameOver() {
-            console.log('Game Over');
+            this.ea.publish('gameOver');
         };
 
         App.prototype.advanceSegment = function advanceSegment(i, accellerate) {
             var segment = this.snake.segments[i];
             accellerate && (segment.speedFactor *= this.accelleration);
-            segment.position[0] += this.snake.directions[segment.direction][0] * segment.speedFactor;
-            segment.position[1] += this.snake.directions[segment.direction][1] * segment.speedFactor;
+            segment.position[0] += parseInt(this.snake.directions[segment.direction][0] * segment.speedFactor, 10);
+            segment.position[1] += parseInt(this.snake.directions[segment.direction][1] * segment.speedFactor, 10);
         };
 
         App.prototype.followSegment = function followSegment(i, j) {
@@ -139,7 +147,7 @@ define('app',['exports', 'aurelia-framework', 'aurelia-event-aggregator', 'jquer
             var dir = tail.direction;
             var x = tail.position[0] - this.snake.directions[dir][0] * this.spriteSize;
             var y = tail.position[1] - this.snake.directions[dir][1] * this.spriteSize;
-            this.snake.segments.push(new this.segment(dir, x, y));
+            this.snake.segments.push(this.segment(dir, x, y));
         };
 
         App.prototype.drawSegment = function drawSegment(segment, i) {
@@ -169,27 +177,40 @@ define('app',['exports', 'aurelia-framework', 'aurelia-event-aggregator', 'jquer
         App.prototype.setSubscribers = function setSubscribers() {
             var _this3 = this;
 
-            var head = this.snake.segments[0];
+            var direction = 0;
             this.ea.subscribe('keyPressed', function (response) {
                 if (_this3.snake.turnSteps == 0) {
-                    _this3.snake.turnSteps = 17;
+                    response.startsWith('Arrow') && (_this3.snake.turnSteps = 17);
                     switch (response) {
                         case 'ArrowRight':
-                            head.direction = 0;
+                            direction = 0;
                             break;
                         case 'ArrowDown':
-                            head.direction = 1;
+                            direction = 1;
                             break;
                         case 'ArrowLeft':
-                            head.direction = 2;
+                            direction = 2;
                             break;
                         case 'ArrowUp':
-                            head.direction = 3;
+                            direction = 3;
                             break;
-                        default:
-                            null;
+                        case 'Enter':
+                            _this3.ea.publish('restart');
+                            break;
+                        case ' ':
+                            if (_this3.crawling) {
+                                _this3.ea.publish('pause');
+                            }
+                            break;
                     }
+                    _this3.snake.segments[0].direction = direction;
                 }
+            });
+            this.ea.subscribe('restart', function (response) {
+                _this3.restart();
+            });
+            this.ea.subscribe('pause', function (response) {
+                _this3.pauseGame();
             });
         };
 
@@ -201,12 +222,44 @@ define('app',['exports', 'aurelia-framework', 'aurelia-event-aggregator', 'jquer
             };
         };
 
+        App.prototype.pauseGame = function pauseGame() {
+            this.pause = !this.pause;
+            if (this.pause) {
+                clearInterval(this.stepTimerHandle);
+                clearInterval(this.fallTimerHandle);
+            } else {
+                this.crawl();
+            }
+        };
+
+        App.prototype.restart = function restart() {
+            if (!this.pause) {
+                clearInterval(this.stepTimerHandle);
+                clearInterval(this.fallTimerHandle);
+                this.initSnake();
+                this.crawl();
+            }
+        };
+
+        App.prototype.keysOn = function keysOn() {
+            this.ea.publish('keysOn');
+        };
+
+        App.prototype.keysOff = function keysOff() {
+            this.ea.publish('keysOff');
+        };
+
         App.prototype.initSnake = function initSnake() {
             var canvasCenter = {
                 x: parseInt(this.$arena.width() / 2, 10),
                 y: parseInt(this.$arena.height() / 2, 10)
             };
-            this.snake.segments.push(new this.segment(0, canvasCenter.x, canvasCenter.y));
+            this.snake.segments = [];
+            this.snake.deadSegments = 0;
+            this.snake.stepInterval = 10;
+            this.snake.steps = 0;
+            this.snake.turnSteps = 0;
+            this.snake.segments.push(this.segment(0, canvasCenter.x, canvasCenter.y));
         };
 
         App.prototype.setDomVars = function setDomVars() {
@@ -272,12 +325,6 @@ define('keystroke-service',['exports', 'aurelia-framework', 'aurelia-event-aggre
 
             this.ea = eventAggregator;
             this.acceptMoves = true;
-            this.keys = {
-                'left': 37,
-                'up': 38,
-                'right': 39,
-                'down': 40
-            };
             this.myKeypressCallback = this.keypressInput.bind(this);
             this.setSubscribers();
         }
@@ -304,7 +351,7 @@ define('keystroke-service',['exports', 'aurelia-framework', 'aurelia-event-aggre
 
         KeystrokeService.prototype.keypressInput = function keypressInput(e) {
             var keycode = event.key;
-            this.ea.publish('keyPressed', keycode);
+            this.acceptMoves && this.ea.publish('keyPressed', keycode);
         };
 
         return KeystrokeService;
@@ -364,7 +411,7 @@ define('components/restart-overlay',['exports', 'aurelia-framework', 'aurelia-ev
     Object.defineProperty(exports, "__esModule", {
         value: true
     });
-    exports.BoardCustomElement = undefined;
+    exports.RestartOverlayCustomElement = undefined;
 
     function _classCallCheck(instance, Constructor) {
         if (!(instance instanceof Constructor)) {
@@ -374,22 +421,44 @@ define('components/restart-overlay',['exports', 'aurelia-framework', 'aurelia-ev
 
     var _dec, _class;
 
-    var BoardCustomElement = exports.BoardCustomElement = (_dec = (0, _aureliaFramework.inject)(_aureliaEventAggregator.EventAggregator), _dec(_class = function () {
-        function BoardCustomElement(eventAggregator) {
-            _classCallCheck(this, BoardCustomElement);
+    var RestartOverlayCustomElement = exports.RestartOverlayCustomElement = (_dec = (0, _aureliaFramework.inject)(_aureliaEventAggregator.EventAggregator), _dec(_class = function () {
+        function RestartOverlayCustomElement(eventAggregator) {
+            _classCallCheck(this, RestartOverlayCustomElement);
 
             this.ea = eventAggregator;
-            this.showOverlay = true;
+            this.showOverlay = false;
+            this.pause = false;
         }
 
-        BoardCustomElement.prototype.attached = function attached() {};
+        RestartOverlayCustomElement.prototype.restart = function restart() {
+            this.ea.publish('restart');
+            this.showOverlay = false;
+        };
 
-        return BoardCustomElement;
+        RestartOverlayCustomElement.prototype.addEventListeners = function addEventListeners() {
+            var _this = this;
+
+            this.ea.subscribe('gameOver', function (response) {
+                _this.showOverlay = true;
+            });
+            this.ea.subscribe('restart', function (response) {
+                _this.showOverlay = false;
+            });
+            this.ea.subscribe('pause', function (response) {
+                _this.pause = !_this.pause;
+            });
+        };
+
+        RestartOverlayCustomElement.prototype.attached = function attached() {
+            this.addEventListeners();
+        };
+
+        return RestartOverlayCustomElement;
     }()) || _class);
 });
 define('text!app.html', ['module'], function(module) { module.exports = "<template>\n    <require from=\"reset.css\"></require>\n    <require from=\"app.css\"></require>\n    <require from=\"components/restart-overlay\"></require>\n    <h1 class=\"gameTitle\">${message}</h1>\n    <canvas id=\"arena\"\n            class=\"arena\"></canvas>\n    <div class=\"snakeImages\">\n        <img class=\"head\"\n             src=\"/images/head.png\">\n        <img class=\"body\"\n             src=\"/images/body.png\">\n        <img class=\"tail\"\n             src=\"/images/tail.png\">\n    </div>\n    <restart-overlay></restart-overlay>\n</template>"; });
-define('text!app.css', ['module'], function(module) { module.exports = "body {\n    position   : relative;\n    user-select: none;\n    overflow   : hidden;\n}\n\n.gameTitle {\n    position      : absolute;\n    z-index       : 2;\n    top           : 0;\n    width         : 100vw;\n    font-family   : 'Trebuchet MS', sans-serif;\n    letter-spacing: 1px;\n    font-size     : 20px;\n    line-height   : 24px;\n    text-align    : center;\n    color         : whitesmoke;\n}\n\n.arena {\n    position        : relative;\n    z-index         : 1;\n    width           : calc(100vw - 48px);\n    height          : calc(100vh - 48px);\n    background-color: black;\n    border          : 24px solid crimson;\n}\n\n.snakeImages {\n    display : none;\n    position: absolute;\n    top     : 0;\n    left    : 0;\n    z-index : 0;\n}\n"; });
+define('text!app.css', ['module'], function(module) { module.exports = "body {\n    position   : relative;\n    user-select: none;\n    overflow   : hidden;\n    font-family: 'Trebuchet MS', sans-serif;\n}\n\n.gameTitle {\n    position      : absolute;\n    z-index       : 2;\n    top           : 0;\n    width         : 100vw;\n    letter-spacing: 1px;\n    font-size     : 20px;\n    line-height   : 24px;\n    text-align    : center;\n    color         : whitesmoke;\n}\n\n.arena {\n    position        : relative;\n    z-index         : 1;\n    width           : calc(100vw - 48px);\n    height          : calc(100vh - 48px);\n    background-color: black;\n    border          : 24px solid crimson;\n}\n\n.snakeImages {\n    display : none;\n    position: absolute;\n    top     : 0;\n    left    : 0;\n    z-index : 0;\n}\n"; });
 define('text!reset.css', ['module'], function(module) { module.exports = "/* http://meyerweb.com/eric/tools/css/reset/ \n   v2.0 | 20110126\n   License: none (public domain)\n*/\n\na, abbr, acronym, address, applet, article, aside, audio, b, big, blockquote, body, canvas, caption, center, cite, code, dd, del, details, dfn, div, dl, dt, em, embed, fieldset, figcaption, figure, footer, form, h1, h2, h3, h4, h5, h6, header, hgroup, html, i, iframe, img, ins, kbd, label, legend, li, mark, menu, nav, object, ol, output, p, pre, q, ruby, s, samp, section, small, span, strike, strong, sub, summary, sup, table, tbody, td, tfoot, th, thead, time, tr, tt, u, ul, var, video {\n    margin        : 0;\n    padding       : 0;\n    border        : 0;\n    font-size     : 100%;\n    font          : inherit;\n    vertical-align: baseline;\n}\n/* HTML5 display-role reset for older browsers */\narticle, aside, details, figcaption, figure, footer, header, hgroup, menu, nav, section {\n    display: block;\n}\n\nbody {\n    line-height: 1;\n}\n\nol, ul {\n    list-style: none;\n}\n\nblockquote, q {\n    quotes: none;\n}\n\nblockquote:after, blockquote:before, q:after, q:before {\n    content: '';\n    content: none;\n}\n\ntable {\n    border-collapse: collapse;\n    border-spacing : 0;\n}\n"; });
-define('text!components/restart-overlay.html', ['module'], function(module) { module.exports = "<template>\n    <require from=\"components/restart-overlay.css\"></require>\n    <h2>Game over.</h2>\n    <h2>Click or tap to start new game</h2>\n</template>"; });
-define('text!components/restart-overlay.css', ['module'], function(module) { module.exports = "restart-overlay {\n    position       : absolute;\n    z-index        : 10;\n    top            : 0;\n    left           : 0;\n    display        : flex;\n    flex-direction : column;\n    justify-content: space-around;\n}\n\nh2 {\n    font-size  : 5vh;\n    line-height: 5vh;\n}\n"; });
+define('text!components/restart-overlay.html', ['module'], function(module) { module.exports = "<template class=\"${showOverlay || pause ? 'show' : ''}\"\n          click.delegate=\"restart()\">\n    <require from=\"components/restart-overlay.css\"></require>\n    <h2 class=\"restart ${!pause ? 'show' : ''}\">Game over.</h2>\n    <h2 class=\"restart ${!pause ? 'show' : ''}\">Click or tap to start new game</h2>\n    <h2 class=\"paused ${pause ? 'show' : ''}\">Game paused.</h2>\n    <h2 class=\"paused ${pause ? 'show' : ''}\">Press space to continue</h2>\n\n</template>"; });
+define('text!components/restart-overlay.css', ['module'], function(module) { module.exports = "restart-overlay {\n    position        : absolute;\n    z-index         : 10;\n    top             : 0;\n    left            : 0;\n    display         : flex;\n    flex-direction  : column;\n    justify-content : space-around;\n    align-items     : center;\n    width           : 100vw;\n    height          : 100vh;\n    background-color: rgba(0,0,0,.7);\n    opacity         : 0;\n    pointer-events  : none;\n    transition      : all .2s;\n}\n\nrestart-overlay.show {\n    opacity       : 1;\n    pointer-events: all;\n}\n\nh2 {\n    font-size  : 5vh;\n    line-height: 5vh;\n    color      : whitesmoke;\n}\n\n.paused, .restart {\n    display: none;\n}\n\n.paused.show, .restart.show {\n    display: block;\n}\n"; });
 //# sourceMappingURL=app-bundle.js.map

@@ -12,14 +12,16 @@ import { KeystrokeService } from './keystroke-service';
 
 export class App {
 
-
     constructor(keystrokeService, eventAggregator) {
         this.keystrokeService = keystrokeService;
         this.ea = eventAggregator;
         this.accelleration = 1.01;
         this.message = 'Snake by ashWare';
+        this.pause = false;
+        this.crawling = false;
         this.spriteSize = 16;
         this.stepTimerHandle = null;
+        this.fallTimerHandle = null;
         this.snake = {
             directions: [
                 [1, 0],
@@ -42,10 +44,11 @@ export class App {
         this.stepTimerHandle = setInterval(() => {
             this.stepNdraw();
         }, this.snake.stepInterval);
+        this.crawling = true;
     }
 
     fall() {
-        this.stepTimerHandle = setInterval(() => {
+        this.fallTimerHandle = setInterval(() => {
             this.fallNdraw();
         }, 0);
     }
@@ -75,8 +78,9 @@ export class App {
             }
         }
         if (this.snake.deadSegments >= this.snake.segments.length) {
-            clearInterval(this.stepTimerHandle);
             this.gameOver();
+            clearInterval(this.fallTimerHandle);
+            this.keysOn();
         }
     }
 
@@ -86,13 +90,16 @@ export class App {
 
     wallHit() {
         let head = this.snake.segments[0];
-        return head.position[0] > this.canvas.width ||
-            head.position[0] < 0 ||
-            head.position[1] > this.canvas.height ||
-            head.position[1] < 0;
+        let halfSprite = this.spriteSize / 2;
+        return head.position[0] > this.canvas.width - halfSprite ||
+            head.position[0] < 0 + halfSprite ||
+            head.position[1] > this.canvas.height - halfSprite ||
+            head.position[1] < 0 + halfSprite;
     }
 
     die() {
+        this.keysOff();
+        this.crawling = false;
         clearInterval(this.stepTimerHandle);
         for (var i = 0; i < this.snake.segments.length; i++) {
             this.snake.segments[i].direction = 1;
@@ -101,14 +108,14 @@ export class App {
     }
 
     gameOver() {
-        console.log('Game Over');
+        this.ea.publish('gameOver');
     }
 
     advanceSegment(i, accellerate) {
         let segment = this.snake.segments[i];
         (accellerate) && (segment.speedFactor *= this.accelleration);
-        segment.position[0] += this.snake.directions[segment.direction][0] * segment.speedFactor;
-        segment.position[1] += this.snake.directions[segment.direction][1] * segment.speedFactor;
+        segment.position[0] += parseInt(this.snake.directions[segment.direction][0] * segment.speedFactor, 10);
+        segment.position[1] += parseInt(this.snake.directions[segment.direction][1] * segment.speedFactor, 10);
     }
 
     followSegment(i, j) {
@@ -132,7 +139,7 @@ export class App {
         let dir = tail.direction;
         let x = tail.position[0] - this.snake.directions[dir][0] * this.spriteSize;
         let y = tail.position[1] - this.snake.directions[dir][1] * this.spriteSize;
-        this.snake.segments.push(new this.segment(dir, x, y));
+        this.snake.segments.push(this.segment(dir, x, y));
     }
 
     drawSegment(segment, i) {
@@ -158,22 +165,34 @@ export class App {
     }
 
     setSubscribers() {
-        let head = this.snake.segments[0];
+        let direction = 0;
         this.ea.subscribe('keyPressed', response => {
             if (this.snake.turnSteps == 0) {
-                this.snake.turnSteps = 17;
+                (response.startsWith('Arrow')) && (this.snake.turnSteps = 17);
                 switch (response) {
-                    case 'ArrowRight': head.direction = 0;
+                    case 'ArrowRight': direction = 0;
                         break;
-                    case 'ArrowDown': head.direction = 1;
+                    case 'ArrowDown': direction = 1;
                         break;
-                    case 'ArrowLeft': head.direction = 2;
+                    case 'ArrowLeft': direction = 2;
                         break;
-                    case 'ArrowUp': head.direction = 3;
+                    case 'ArrowUp': direction = 3;
                         break;
-                    default: null;
+                    case 'Enter': this.ea.publish('restart');
+                        break;
+                    case ' ': if (this.crawling) {
+                        this.ea.publish('pause');
+                    }
+                        break;
                 }
+                this.snake.segments[0].direction = direction;
             }
+        });
+        this.ea.subscribe('restart', response => {
+            this.restart();
+        });
+        this.ea.subscribe('pause', response => {
+            this.pauseGame();
         });
     }
 
@@ -185,12 +204,44 @@ export class App {
         }
     }
 
+    pauseGame() {
+        this.pause = !this.pause;
+        if (this.pause) {
+            clearInterval(this.stepTimerHandle);
+            clearInterval(this.fallTimerHandle);
+        } else {
+            this.crawl();
+        }
+    }
+
+    restart() {
+        if (!this.pause) {
+            clearInterval(this.stepTimerHandle);
+            clearInterval(this.fallTimerHandle);
+            this.initSnake();
+            this.crawl();
+        }
+    }
+
+    keysOn() {
+        this.ea.publish('keysOn');
+    }
+
+    keysOff() {
+        this.ea.publish('keysOff');
+    }
+
     initSnake() {
         let canvasCenter = {
             x: parseInt(this.$arena.width() / 2, 10),
             y: parseInt(this.$arena.height() / 2, 10)
         };
-        this.snake.segments.push(new this.segment(0, canvasCenter.x, canvasCenter.y));
+        this.snake.segments = [];
+        this.snake.deadSegments = 0;
+        this.snake.stepInterval = 10;
+        this.snake.steps = 0;
+        this.snake.turnSteps = 0;
+        this.snake.segments.push(this.segment(0, canvasCenter.x, canvasCenter.y));
     }
 
     setDomVars() {

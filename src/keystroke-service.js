@@ -11,12 +11,6 @@ export class KeystrokeService {
     constructor(eventAggregator) {
         this.ea = eventAggregator;
         this.acceptMoves = true;
-        this.keys = {
-            'left': 37,
-            'up': 38,
-            'right': 39,
-            'down': 40
-        };
         this.myKeypressCallback = this.keypressInput.bind(this);
         this.setSubscribers();
     }
@@ -43,6 +37,6 @@ export class KeystrokeService {
     keypressInput(e) {
         // console.log(e);
         let keycode = event.key; // also for cross-browser compatible
-        this.ea.publish('keyPressed', keycode);
+        (this.acceptMoves) && this.ea.publish('keyPressed', keycode);
     }
 }
