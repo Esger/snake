@@ -1,5 +1,7 @@
 body {
-    position: relative;
+    position   : relative;
+    user-select: none;
+    overflow   : hidden;
 }
 
 .gameTitle {

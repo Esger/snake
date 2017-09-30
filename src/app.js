@@ -19,7 +19,6 @@ export class App {
         this.spriteSize = 16;
         this.stepTimerHandle = null;
         this.snake = {
-            direction: 0,
             directions: [
                 [1, 0],
                 [0, 1],
@@ -28,7 +27,7 @@ export class App {
             ],
             images: [],
             segments: [],
-            stepInterval: 500
+            stepInterval: 100
         }
     }
 
@@ -43,13 +42,14 @@ export class App {
         for (let i = 0; i < this.snake.segments.length; i++) {
             let segment = this.snake.segments[i];
             (i == 0) ? this.advanceSegment(i) : this.followSegment(i, i - 1);
-            this.drawSegment(segment);
+            this.drawSegment(segment, i);
         }
     }
 
     advanceSegment(i) {
-        this.snake.segments[i].position[0] += this.snake.directions[this.snake.direction][0];
-        this.snake.segments[i].position[1] += this.snake.directions[this.snake.direction][1];
+        let segment = this.snake.segments[i];
+        segment.position[0] += this.snake.directions[segment.direction][0];
+        segment.position[1] += this.snake.directions[segment.direction][1];
     }
 
     followSegment(i, j) {
@@ -69,12 +69,19 @@ export class App {
         }
     }
 
-    drawSegment(imgObj) {
+    drawSegment(segment, i) {
         let ctx = this.ctx;
+        let imageIndex = 1;
+        switch (i) {
+            case 0: imageIndex = 0;
+                break;
+            case this.snake.segments.length: imageIndex = 2;
+                break;
+        }
         ctx.save();
-        ctx.translate(imgObj.position[0], imgObj.position[1]);
-        // ctx.rotate(bug.direction - pi / 2); Fix this for each segment -> pass direction onto next segments
-        ctx.drawImage(this.snake.images[imgObj.imgIndex], this.spriteSize, this.spriteSize);
+        ctx.translate(segment.position[0], segment.position[1]);
+        ctx.rotate(segment.direction * Math.PI / 2);
+        ctx.drawImage(this.snake.images[imageIndex], -this.spriteSize / 2, -this.spriteSize / 2);
         ctx.restore();
     }
 
@@ -85,15 +92,16 @@ export class App {
     }
 
     setSubscribers() {
+        let head = this.snake.segments[0];
         this.ea.subscribe('keyPressed', response => {
             switch (response) {
-                case 'ArrowRight': this.snake.direction = 0;
+                case 'ArrowRight': head.direction = 0;
                     break;
-                case 'ArrowDown': this.snake.direction = 1;
+                case 'ArrowDown': head.direction = 1;
                     break;
-                case 'ArrowLeft': this.snake.direction = 2;
+                case 'ArrowLeft': head.direction = 2;
                     break;
-                case 'ArrowUp': this.snake.direction = 3;
+                case 'ArrowUp': head.direction = 3;
                     break;
                 default: null;
             }
@@ -105,14 +113,11 @@ export class App {
             x: parseInt(this.$arena.width() / 2, 10),
             y: parseInt(this.$arena.height() / 2, 10)
         };
-        for (let i = 0; i < this.snake.images.length; i++) {
-            let $img = this.snake.images[i];
-            let segment = {
-                imgIndex: i,
-                position: [canvasCenter.x, canvasCenter.y]
-            }
-            this.snake.segments.push(segment);
+        let segment = {
+            direction: 0,
+            position: [canvasCenter.x, canvasCenter.y]
         }
+        this.snake.segments.push(segment);
     }
 
     setDomVars() {

@@ -41,7 +41,7 @@ export class KeystrokeService {
 
     // This function is called by the aliased method
     keypressInput(e) {
-        console.log(e);
+        // console.log(e);
         let keycode = event.key; // also for cross-browser compatible
         this.ea.publish('keyPressed', keycode);
     }
