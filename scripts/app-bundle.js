@@ -74,7 +74,7 @@ define('app',['exports', 'aurelia-framework', 'aurelia-event-aggregator', 'jquer
                 i == 0 ? this.advanceSegment(i) : this.followSegment(i, i - 1);
                 this.drawSegment(segment, i);
             }
-            this.wallHit() && this.die();
+            (this.snakeHit() || this.wallHit()) && this.die();
         };
 
         App.prototype.fallNdraw = function fallNdraw() {
@@ -103,6 +103,25 @@ define('app',['exports', 'aurelia-framework', 'aurelia-event-aggregator', 'jquer
             var head = this.snake.segments[0];
             var halfSprite = this.spriteSize / 2;
             return head.position[0] > this.canvas.width - halfSprite || head.position[0] < 0 + halfSprite || head.position[1] > this.canvas.height - halfSprite || head.position[1] < 0 + halfSprite;
+        };
+
+        App.prototype.snakeHit = function snakeHit() {
+            var self = this;
+            var head = this.snake.segments[0];
+            function overlap(segPos, headPos) {
+                var dx = Math.abs(segPos[0] - headPos[0]);
+                var dy = Math.abs(segPos[1] - headPos[1]);
+                var xOverlap = dx < self.spriteSize / 2;
+                var yOverlap = dy < self.spriteSize / 2;
+                return xOverlap && yOverlap;
+            }
+            for (var i = 1; i < this.snake.segments.length; i++) {
+                var segment = this.snake.segments[i];
+                if (overlap(segment.position, head.position)) {
+                    return true;
+                }
+            }
+            return false;
         };
 
         App.prototype.die = function die() {
@@ -179,8 +198,8 @@ define('app',['exports', 'aurelia-framework', 'aurelia-event-aggregator', 'jquer
 
             var direction = 0;
             this.ea.subscribe('keyPressed', function (response) {
-                if (_this3.snake.turnSteps == 0) {
-                    response.startsWith('Arrow') && (_this3.snake.turnSteps = 17);
+                if (response.startsWith('Arrow') && _this3.snake.turnSteps == 0) {
+                    _this3.snake.turnSteps = 17;
                     switch (response) {
                         case 'ArrowRight':
                             direction = 0;
@@ -194,16 +213,18 @@ define('app',['exports', 'aurelia-framework', 'aurelia-event-aggregator', 'jquer
                         case 'ArrowUp':
                             direction = 3;
                             break;
-                        case 'Enter':
-                            _this3.ea.publish('restart');
-                            break;
-                        case ' ':
-                            if (_this3.crawling) {
-                                _this3.ea.publish('pause');
-                            }
-                            break;
                     }
                     _this3.snake.segments[0].direction = direction;
+                }
+                switch (response) {
+                    case 'Enter':
+                        _this3.ea.publish('restart');
+                        break;
+                    case ' ':
+                        if (_this3.crawling) {
+                            _this3.ea.publish('pause');
+                        }
+                        break;
                 }
             });
             this.ea.subscribe('restart', function (response) {

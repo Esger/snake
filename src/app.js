@@ -63,7 +63,7 @@ export class App {
             (i == 0) ? this.advanceSegment(i) : this.followSegment(i, i - 1);
             this.drawSegment(segment, i);
         }
-        this.wallHit() && this.die();
+        (this.snakeHit() || this.wallHit()) && this.die();
     }
 
     fallNdraw() {
@@ -97,11 +97,30 @@ export class App {
             head.position[1] < 0 + halfSprite;
     }
 
+    snakeHit() {
+        let self = this;
+        let head = this.snake.segments[0];
+        function overlap(segPos, headPos) {
+            let dx = Math.abs(segPos[0] - headPos[0]);
+            let dy = Math.abs(segPos[1] - headPos[1]);
+            let xOverlap = dx < self.spriteSize / 2;
+            let yOverlap = dy < self.spriteSize / 2;
+            return xOverlap && yOverlap;
+        }
+        for (let i = 1; i < this.snake.segments.length; i++) {
+            let segment = this.snake.segments[i];
+            if (overlap(segment.position, head.position)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     die() {
         this.keysOff();
         this.crawling = false;
         clearInterval(this.stepTimerHandle);
-        for (var i = 0; i < this.snake.segments.length; i++) {
+        for (let i = 0; i < this.snake.segments.length; i++) {
             this.snake.segments[i].direction = 1;
         }
         this.fall();
@@ -167,8 +186,8 @@ export class App {
     setSubscribers() {
         let direction = 0;
         this.ea.subscribe('keyPressed', response => {
-            if (this.snake.turnSteps == 0) {
-                (response.startsWith('Arrow')) && (this.snake.turnSteps = 17);
+            if (response.startsWith('Arrow') && this.snake.turnSteps == 0) {
+                this.snake.turnSteps = 17;
                 switch (response) {
                     case 'ArrowRight': direction = 0;
                         break;
@@ -178,14 +197,14 @@ export class App {
                         break;
                     case 'ArrowUp': direction = 3;
                         break;
-                    case 'Enter': this.ea.publish('restart');
-                        break;
-                    case ' ': if (this.crawling) {
-                        this.ea.publish('pause');
-                    }
-                        break;
                 }
                 this.snake.segments[0].direction = direction;
+            }
+            switch (response) {
+                case 'Enter': this.ea.publish('restart');
+                    break;
+                case ' ': if (this.crawling) { this.ea.publish('pause'); }
+                    break;
             }
         });
         this.ea.subscribe('restart', response => {
