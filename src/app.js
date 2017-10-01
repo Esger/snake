@@ -33,6 +33,7 @@ export class App {
             deadSegments: 0,
             growInterval: 10 * this.spriteSize,
             images: [],
+            speedUpInterval: 100 * this.spriteSize,
             segments: [],
             stepInterval: 10,
             steps: 0,
@@ -48,6 +49,10 @@ export class App {
     }
 
     fall() {
+        this.snake.segments.forEach((segment) => {
+            segment.direction = 1;
+            segment.speedFactor = 1;
+        });
         this.fallTimerHandle = setInterval(() => {
             this.fallNdraw();
         }, 0);
@@ -56,31 +61,31 @@ export class App {
     stepNdraw() {
         this.fadeArena();
         this.snake.steps++;
+        // limit the rate at which turns are accepted
         (this.snake.turnSteps > 0) && this.snake.turnSteps--;
         (this.snake.steps % this.snake.growInterval == 0) && this.grow();
-        for (let i = 0; i < this.snake.segments.length; i++) {
-            let segment = this.snake.segments[i];
+        (this.snake.steps % this.snake.speedUpInterval == 0) && this.speedup();
+        this.snake.segments.forEach((segment, i) => {
             (i == 0) ? this.advanceSegment(i) : this.followSegment(i, i - 1);
             this.drawSegment(segment, i);
-        }
-        (this.snakeHit() || this.wallHit()) && this.die();
+        });
+        (this.hitSnake() || this.hitWall()) && this.die();
     }
 
     fallNdraw() {
         this.fadeArena();
-        for (let i = 0; i < this.snake.segments.length; i++) {
-            let segment = this.snake.segments[i];
+        this.snake.segments.forEach((segment, i) => {
             (segment.direction < 4) && this.advanceSegment(i, true);
             this.drawSegment(segment, i);
             if (segment.direction < 4 && this.floorHit(segment)) {
                 this.snake.deadSegments++;
                 segment.direction = 4;
             }
-        }
+        });
         if (this.snake.deadSegments >= this.snake.segments.length) {
-            this.gameOver();
             clearInterval(this.fallTimerHandle);
             this.keysOn();
+            this.gameOver();
         }
     }
 
@@ -88,7 +93,7 @@ export class App {
         return segment.position[1] + this.spriteSize / 2 > this.canvas.height;
     }
 
-    wallHit() {
+    hitWall() {
         let head = this.snake.segments[0];
         let halfSprite = this.spriteSize / 2;
         return head.position[0] > this.canvas.width - halfSprite ||
@@ -97,7 +102,7 @@ export class App {
             head.position[1] < 0 + halfSprite;
     }
 
-    snakeHit() {
+    hitSnake() {
         let self = this;
         let head = this.snake.segments[0];
         function overlap(segPos, headPos) {
@@ -107,7 +112,7 @@ export class App {
             let yOverlap = dy < self.spriteSize / 2;
             return xOverlap && yOverlap;
         }
-        for (let i = 1; i < this.snake.segments.length; i++) {
+        for (let i = 1; i < this.snake.segments.length - 1; i++) {
             let segment = this.snake.segments[i];
             if (overlap(segment.position, head.position)) {
                 return true;
@@ -116,13 +121,24 @@ export class App {
         return false;
     }
 
+    speedup() {
+        if (this.snake.stepInterval > 0) {
+            this.snake.stepInterval--;
+        } else {
+            this.snake.segments.forEach((segment) => {
+                segment.speedFactor += 1;
+            });
+            this.snake.stepInterval = 7;
+        }
+        this.pauseGame();
+        this.pauseGame();
+        this.ea.publish('speedup');
+    }
+
     die() {
         this.keysOff();
         this.crawling = false;
         clearInterval(this.stepTimerHandle);
-        for (let i = 0; i < this.snake.segments.length; i++) {
-            this.snake.segments[i].direction = 1;
-        }
         this.fall();
     }
 
@@ -140,14 +156,20 @@ export class App {
     followSegment(i, j) {
         let segment = this.snake.segments[i];
         let preceder = this.snake.segments[j];
-        let dx = preceder.position[0] - segment.position[0];
-        let dy = preceder.position[1] - segment.position[1];
+        let dx = Math.abs(preceder.position[0] - segment.position[0]);
+        let dy = Math.abs(preceder.position[1] - segment.position[1]);
         let axis = (segment.direction % 2 == 0) ? 'x' : 'y';
         if (preceder.direction !== segment.direction) {
             if (axis == 'x') {
-                segment.direction = (dx == 0) ? preceder.direction : segment.direction;
+                if (dx < this.spriteSize && dy > this.spriteSize) {
+                    segment.direction = preceder.direction;
+                    segment.position[0] = preceder.position[0];
+                }
             } else {
-                segment.direction = (dy == 0) ? preceder.direction : segment.direction;
+                if (dy < this.spriteSize && dx > this.spriteSize) {
+                    segment.direction = preceder.direction;
+                    segment.position[1] = preceder.position[1];
+                }
             }
         }
         this.advanceSegment(i);
@@ -156,9 +178,11 @@ export class App {
     grow() {
         let tail = this.snake.segments[this.snake.segments.length - 1];
         let dir = tail.direction;
+        let factor = tail.speedFactor;
         let x = tail.position[0] - this.snake.directions[dir][0] * this.spriteSize;
         let y = tail.position[1] - this.snake.directions[dir][1] * this.spriteSize;
-        this.snake.segments.push(this.segment(dir, x, y));
+        this.snake.segments.push(this.segment(dir, factor, x, y));
+        this.ea.publish('grow');
     }
 
     drawSegment(segment, i) {
@@ -198,7 +222,7 @@ export class App {
                     case 'ArrowUp': direction = 3;
                         break;
                 }
-                this.snake.segments[0].direction = direction;
+                (((direction + 2) % 4) !== this.snake.segments[0].direction) && (this.snake.segments[0].direction = direction);
             }
             switch (response) {
                 case 'Enter': this.ea.publish('restart');
@@ -215,11 +239,11 @@ export class App {
         });
     }
 
-    segment(direction, x, y) {
+    segment(direction, speedFactor, x, y) {
         return {
             direction: direction,
             position: [x, y],
-            speedFactor: 1
+            speedFactor: speedFactor
         }
     }
 
@@ -260,7 +284,7 @@ export class App {
         this.snake.stepInterval = 10;
         this.snake.steps = 0;
         this.snake.turnSteps = 0;
-        this.snake.segments.push(this.segment(0, canvasCenter.x, canvasCenter.y));
+        this.snake.segments.push(this.segment(0, 1, canvasCenter.x, canvasCenter.y));
     }
 
     setDomVars() {

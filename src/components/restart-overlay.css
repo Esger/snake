@@ -20,7 +20,7 @@ restart-overlay.show {
     pointer-events: all;
 }
 
-h2 {
+restart-overlay h2 {
     font-size  : 5vh;
     line-height: 5vh;
     color      : whitesmoke;
