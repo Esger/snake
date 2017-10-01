@@ -33,6 +33,7 @@ export class App {
             deadSegments: 0,
             growInterval: 10 * this.spriteSize,
             images: [],
+            speedUpInterval: 100 * this.spriteSize,
             segments: [],
             stepInterval: 10,
             steps: 0,
@@ -56,14 +57,16 @@ export class App {
     stepNdraw() {
         this.fadeArena();
         this.snake.steps++;
+        // limit the rate at which turns are accepted
         (this.snake.turnSteps > 0) && this.snake.turnSteps--;
         (this.snake.steps % this.snake.growInterval == 0) && this.grow();
+        (this.snake.steps % this.snake.speedUpInterval == 0) && this.speedup();
         for (let i = 0; i < this.snake.segments.length; i++) {
             let segment = this.snake.segments[i];
             (i == 0) ? this.advanceSegment(i) : this.followSegment(i, i - 1);
             this.drawSegment(segment, i);
         }
-        (this.snakeHit() || this.wallHit()) && this.die();
+        (this.hitSnake() || this.hitWall()) && this.die();
     }
 
     fallNdraw() {
@@ -88,7 +91,7 @@ export class App {
         return segment.position[1] + this.spriteSize / 2 > this.canvas.height;
     }
 
-    wallHit() {
+    hitWall() {
         let head = this.snake.segments[0];
         let halfSprite = this.spriteSize / 2;
         return head.position[0] > this.canvas.width - halfSprite ||
@@ -97,7 +100,7 @@ export class App {
             head.position[1] < 0 + halfSprite;
     }
 
-    snakeHit() {
+    hitSnake() {
         let self = this;
         let head = this.snake.segments[0];
         function overlap(segPos, headPos) {
@@ -114,6 +117,15 @@ export class App {
             }
         }
         return false;
+    }
+
+    speedup() {
+        if (this.snake.stepInterval > 0) {
+            this.snake.stepInterval--;
+            this.pauseGame();
+            this.pauseGame();
+            this.ea.publish('speedup');
+        }
     }
 
     die() {

@@ -40,6 +40,7 @@ define('app',['exports', 'aurelia-framework', 'aurelia-event-aggregator', 'jquer
                 deadSegments: 0,
                 growInterval: 10 * this.spriteSize,
                 images: [],
+                speedUpInterval: 100 * this.spriteSize,
                 segments: [],
                 stepInterval: 10,
                 steps: 0,
@@ -67,14 +68,16 @@ define('app',['exports', 'aurelia-framework', 'aurelia-event-aggregator', 'jquer
         App.prototype.stepNdraw = function stepNdraw() {
             this.fadeArena();
             this.snake.steps++;
+
             this.snake.turnSteps > 0 && this.snake.turnSteps--;
             this.snake.steps % this.snake.growInterval == 0 && this.grow();
+            this.snake.steps % this.snake.speedUpInterval == 0 && this.speedup();
             for (var i = 0; i < this.snake.segments.length; i++) {
                 var segment = this.snake.segments[i];
                 i == 0 ? this.advanceSegment(i) : this.followSegment(i, i - 1);
                 this.drawSegment(segment, i);
             }
-            (this.snakeHit() || this.wallHit()) && this.die();
+            (this.hitSnake() || this.hitWall()) && this.die();
         };
 
         App.prototype.fallNdraw = function fallNdraw() {
@@ -99,13 +102,13 @@ define('app',['exports', 'aurelia-framework', 'aurelia-event-aggregator', 'jquer
             return segment.position[1] + this.spriteSize / 2 > this.canvas.height;
         };
 
-        App.prototype.wallHit = function wallHit() {
+        App.prototype.hitWall = function hitWall() {
             var head = this.snake.segments[0];
             var halfSprite = this.spriteSize / 2;
             return head.position[0] > this.canvas.width - halfSprite || head.position[0] < 0 + halfSprite || head.position[1] > this.canvas.height - halfSprite || head.position[1] < 0 + halfSprite;
         };
 
-        App.prototype.snakeHit = function snakeHit() {
+        App.prototype.hitSnake = function hitSnake() {
             var self = this;
             var head = this.snake.segments[0];
             function overlap(segPos, headPos) {
@@ -122,6 +125,15 @@ define('app',['exports', 'aurelia-framework', 'aurelia-event-aggregator', 'jquer
                 }
             }
             return false;
+        };
+
+        App.prototype.speedup = function speedup() {
+            if (this.snake.stepInterval > 0) {
+                this.snake.stepInterval--;
+                this.pauseGame();
+                this.pauseGame();
+                this.ea.publish('speedup');
+            }
         };
 
         App.prototype.die = function die() {
@@ -477,9 +489,54 @@ define('components/restart-overlay',['exports', 'aurelia-framework', 'aurelia-ev
         return RestartOverlayCustomElement;
     }()) || _class);
 });
-define('text!app.html', ['module'], function(module) { module.exports = "<template>\n    <require from=\"reset.css\"></require>\n    <require from=\"app.css\"></require>\n    <require from=\"components/restart-overlay\"></require>\n    <h1 class=\"gameTitle\">${message}</h1>\n    <canvas id=\"arena\"\n            class=\"arena\"></canvas>\n    <div class=\"snakeImages\">\n        <img class=\"head\"\n             src=\"/images/head.png\">\n        <img class=\"body\"\n             src=\"/images/body.png\">\n        <img class=\"tail\"\n             src=\"/images/tail.png\">\n    </div>\n    <restart-overlay></restart-overlay>\n</template>"; });
+define('components/status',['exports', 'aurelia-framework', 'aurelia-event-aggregator'], function (exports, _aureliaFramework, _aureliaEventAggregator) {
+    'use strict';
+
+    Object.defineProperty(exports, "__esModule", {
+        value: true
+    });
+    exports.StatusCustomElement = undefined;
+
+    function _classCallCheck(instance, Constructor) {
+        if (!(instance instanceof Constructor)) {
+            throw new TypeError("Cannot call a class as a function");
+        }
+    }
+
+    var _dec, _class;
+
+    var StatusCustomElement = exports.StatusCustomElement = (_dec = (0, _aureliaFramework.inject)(_aureliaEventAggregator.EventAggregator), _dec(_class = function () {
+        function StatusCustomElement(eventAggregator) {
+            _classCallCheck(this, StatusCustomElement);
+
+            this.ea = eventAggregator;
+            this.speed = 0;
+            this.length = 1;
+        }
+
+        StatusCustomElement.prototype.addEventListeners = function addEventListeners() {
+            var _this = this;
+
+            this.ea.subscribe('speedup', function (response) {
+                _this.speed++;
+            });
+            this.ea.subscribe('grow', function (response) {
+                _this.length++;
+            });
+        };
+
+        StatusCustomElement.prototype.attached = function attached() {
+            this.addEventListeners();
+        };
+
+        return StatusCustomElement;
+    }()) || _class);
+});
+define('text!app.html', ['module'], function(module) { module.exports = "<template>\n    <require from=\"reset.css\"></require>\n    <require from=\"app.css\"></require>\n    <require from=\"components/restart-overlay\"></require>\n    <require from=\"components/status\"></require>\n    <h1 class=\"gameTitle\">${message}</h1>\n    <canvas id=\"arena\"\n            class=\"arena\"></canvas>\n    <div class=\"snakeImages\">\n        <img class=\"head\"\n             src=\"/images/head.png\">\n        <img class=\"body\"\n             src=\"/images/body.png\">\n        <img class=\"tail\"\n             src=\"/images/tail.png\">\n    </div>\n    <restart-overlay></restart-overlay>\n    <status></status>\n</template>"; });
 define('text!app.css', ['module'], function(module) { module.exports = "body {\n    position   : relative;\n    user-select: none;\n    overflow   : hidden;\n    font-family: 'Trebuchet MS', sans-serif;\n}\n\n.gameTitle {\n    position      : absolute;\n    z-index       : 2;\n    top           : 0;\n    width         : 100vw;\n    letter-spacing: 1px;\n    font-size     : 20px;\n    line-height   : 24px;\n    text-align    : center;\n    color         : whitesmoke;\n}\n\n.arena {\n    position        : relative;\n    z-index         : 1;\n    width           : calc(100vw - 48px);\n    height          : calc(100vh - 48px);\n    background-color: black;\n    border          : 24px solid crimson;\n}\n\n.snakeImages {\n    display : none;\n    position: absolute;\n    top     : 0;\n    left    : 0;\n    z-index : 0;\n}\n"; });
 define('text!reset.css', ['module'], function(module) { module.exports = "/* http://meyerweb.com/eric/tools/css/reset/ \n   v2.0 | 20110126\n   License: none (public domain)\n*/\n\na, abbr, acronym, address, applet, article, aside, audio, b, big, blockquote, body, canvas, caption, center, cite, code, dd, del, details, dfn, div, dl, dt, em, embed, fieldset, figcaption, figure, footer, form, h1, h2, h3, h4, h5, h6, header, hgroup, html, i, iframe, img, ins, kbd, label, legend, li, mark, menu, nav, object, ol, output, p, pre, q, ruby, s, samp, section, small, span, strike, strong, sub, summary, sup, table, tbody, td, tfoot, th, thead, time, tr, tt, u, ul, var, video {\n    margin        : 0;\n    padding       : 0;\n    border        : 0;\n    font-size     : 100%;\n    font          : inherit;\n    vertical-align: baseline;\n}\n/* HTML5 display-role reset for older browsers */\narticle, aside, details, figcaption, figure, footer, header, hgroup, menu, nav, section {\n    display: block;\n}\n\nbody {\n    line-height: 1;\n}\n\nol, ul {\n    list-style: none;\n}\n\nblockquote, q {\n    quotes: none;\n}\n\nblockquote:after, blockquote:before, q:after, q:before {\n    content: '';\n    content: none;\n}\n\ntable {\n    border-collapse: collapse;\n    border-spacing : 0;\n}\n"; });
-define('text!components/restart-overlay.html', ['module'], function(module) { module.exports = "<template class=\"${showOverlay || pause ? 'show' : ''}\"\n          click.delegate=\"restart()\">\n    <require from=\"components/restart-overlay.css\"></require>\n    <h2 class=\"restart ${!pause ? 'show' : ''}\">Game over.</h2>\n    <h2 class=\"restart ${!pause ? 'show' : ''}\">Click or tap to start new game</h2>\n    <h2 class=\"paused ${pause ? 'show' : ''}\">Game paused.</h2>\n    <h2 class=\"paused ${pause ? 'show' : ''}\">Press space to continue</h2>\n\n</template>"; });
-define('text!components/restart-overlay.css', ['module'], function(module) { module.exports = "restart-overlay {\n    position        : absolute;\n    z-index         : 10;\n    top             : 0;\n    left            : 0;\n    display         : flex;\n    flex-direction  : column;\n    justify-content : space-around;\n    align-items     : center;\n    width           : 100vw;\n    height          : 100vh;\n    background-color: rgba(0,0,0,.7);\n    opacity         : 0;\n    pointer-events  : none;\n    transition      : all .2s;\n}\n\nrestart-overlay.show {\n    opacity       : 1;\n    pointer-events: all;\n}\n\nh2 {\n    font-size  : 5vh;\n    line-height: 5vh;\n    color      : whitesmoke;\n}\n\n.paused, .restart {\n    display: none;\n}\n\n.paused.show, .restart.show {\n    display: block;\n}\n"; });
+define('text!components/restart-overlay.html', ['module'], function(module) { module.exports = "<template class=\"${showOverlay || pause ? 'show' : ''}\"\n          click.delegate=\"restart()\">\n    <require from=\"components/restart-overlay.css\"></require>\n    <h2 class=\"restart ${!pause ? 'show' : ''}\">Game over.</h2>\n    <h2 class=\"restart ${!pause ? 'show' : ''}\">Click or tap or &lt;enter&gt; to start new game</h2>\n    <h2 class=\"paused ${pause ? 'show' : ''}\">Game paused.</h2>\n    <h2 class=\"paused ${pause ? 'show' : ''}\">Press space to continue</h2>\n\n</template>"; });
+define('text!components/restart-overlay.css', ['module'], function(module) { module.exports = "restart-overlay {\n    position        : absolute;\n    z-index         : 10;\n    top             : 0;\n    left            : 0;\n    display         : flex;\n    flex-direction  : column;\n    justify-content : space-around;\n    align-items     : center;\n    width           : 100vw;\n    height          : 100vh;\n    background-color: rgba(0,0,0,.7);\n    opacity         : 0;\n    pointer-events  : none;\n    transition      : all .2s;\n}\n\nrestart-overlay.show {\n    opacity       : 1;\n    pointer-events: all;\n}\n\nrestart-overlay.h2 {\n    font-size  : 5vh;\n    line-height: 5vh;\n    color      : whitesmoke;\n}\n\n.paused, .restart {\n    display: none;\n}\n\n.paused.show, .restart.show {\n    display: block;\n}\n"; });
+define('text!components/status.html', ['module'], function(module) { module.exports = "<template>\n    <require from=\"components/status.css\"></require>\n    <h2 class=\"statusLine\">Speed: ${speed}&emsp;Length: ${snake.segments.length}</h2>\n</template>"; });
+define('text!components/status.css', ['module'], function(module) { module.exports = "status {\n    position: absolute;\n    z-index : 2;\n    bottom  : 0;\n    width   : 100vw;\n}\n\n.statusLine {\n    font-size  : 18px;\n    line-height: 30px;\n    color      : wheat;\n    margin-left: 24px;\n}\n"; });
 //# sourceMappingURL=app-bundle.js.map
