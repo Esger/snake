@@ -1,0 +1,35 @@
+body {
+    position   : relative;
+    user-select: none;
+    overflow   : hidden;
+    font-family: 'Trebuchet MS', sans-serif;
+}
+
+.gameTitle {
+    position      : absolute;
+    z-index       : 2;
+    top           : 0;
+    width         : 100vw;
+    letter-spacing: 1px;
+    font-size     : 20px;
+    line-height   : 24px;
+    text-align    : center;
+    color         : whitesmoke;
+}
+
+.arena {
+    position        : relative;
+    z-index         : 1;
+    width           : calc(100vw - 48px);
+    height          : calc(100vh - 48px);
+    background-color: black;
+    border          : 24px solid crimson;
+}
+
+.snakeImages {
+    display : none;
+    position: absolute;
+    top     : 0;
+    left    : 0;
+    z-index : 0;
+}
