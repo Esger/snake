@@ -33,18 +33,27 @@ define('app',['exports', 'aurelia-framework', 'aurelia-event-aggregator', 'jquer
             this.pause = false;
             this.crawling = false;
             this.spriteSize = 16;
+            this.halfSprite = this.spriteSize / 2;
             this.stepTimerHandle = null;
             this.fallTimerHandle = null;
-            this.snake = {
-                directions: [[1, 0], [0, 1], [-1, 0], [0, -1], [0, 0]],
-                deadSegments: 0,
-                growInterval: 10 * this.spriteSize,
+            this.growTimerHandle = null;
+            this.speedupTimerHandle = null;
+            this.snackTimerHandle = null;
+            this.snacks = {
                 images: [],
-                speedUpInterval: 100 * this.spriteSize,
+                onBoard: [],
+                snackInterval: 2500
+            };
+            this.snake = {
+                images: [],
                 segments: [],
-                stepInterval: 10,
+                directions: [[1, 0], [0, 1], [-1, 0], [0, -1], [0, 0]],
                 steps: 0,
-                turnSteps: 0
+                turnSteps: 0,
+                deadSegments: 0,
+                stepInterval: 10,
+                growInterval: 3000,
+                speedupInterval: 10000
             };
         }
 
@@ -54,6 +63,15 @@ define('app',['exports', 'aurelia-framework', 'aurelia-event-aggregator', 'jquer
             this.stepTimerHandle = setInterval(function () {
                 _this.stepNdraw();
             }, this.snake.stepInterval);
+            this.growTimerHandle = setInterval(function () {
+                _this.grow();
+            }, this.snake.growInterval);
+            this.speedupTimerHandle = setInterval(function () {
+                _this.speedup();
+            }, this.snake.speedupInterval);
+            this.snackTimerHandle = setInterval(function () {
+                _this.addSnack();
+            }, this.snacks.snackInterval);
             this.crawling = true;
         };
 
@@ -73,11 +91,10 @@ define('app',['exports', 'aurelia-framework', 'aurelia-event-aggregator', 'jquer
             var _this3 = this;
 
             this.fadeArena();
-            this.snake.steps++;
+            this.drawSnacks();
+            this.snake.steps += 1;
 
             this.snake.turnSteps > 0 && this.snake.turnSteps--;
-            this.snake.steps % this.snake.growInterval == 0 && this.grow();
-            this.snake.steps % this.snake.speedUpInterval == 0 && this.speedup();
             this.snake.segments.forEach(function (segment, i) {
                 i == 0 ? _this3.advanceSegment(i) : _this3.followSegment(i, i - 1);
                 _this3.drawSegment(segment, i);
@@ -98,20 +115,19 @@ define('app',['exports', 'aurelia-framework', 'aurelia-event-aggregator', 'jquer
                 }
             });
             if (this.snake.deadSegments >= this.snake.segments.length) {
-                clearInterval(this.fallTimerHandle);
+                this.clearTimedEvents();
                 this.keysOn();
                 this.gameOver();
             }
         };
 
         App.prototype.floorHit = function floorHit(segment) {
-            return segment.position[1] + this.spriteSize / 2 > this.canvas.height;
+            return segment.position[1] + this.halfSprite > this.canvas.height;
         };
 
         App.prototype.hitWall = function hitWall() {
             var head = this.snake.segments[0];
-            var halfSprite = this.spriteSize / 2;
-            return head.position[0] > this.canvas.width - halfSprite || head.position[0] < 0 + halfSprite || head.position[1] > this.canvas.height - halfSprite || head.position[1] < 0 + halfSprite;
+            return head.position[0] > this.canvas.width - this.halfSprite || head.position[0] < 0 + this.halfSprite || head.position[1] > this.canvas.height - this.halfSprite || head.position[1] < 0 + this.halfSprite;
         };
 
         App.prototype.hitSnake = function hitSnake() {
@@ -120,8 +136,8 @@ define('app',['exports', 'aurelia-framework', 'aurelia-event-aggregator', 'jquer
             function overlap(segPos, headPos) {
                 var dx = Math.abs(segPos[0] - headPos[0]);
                 var dy = Math.abs(segPos[1] - headPos[1]);
-                var xOverlap = dx < self.spriteSize / 2;
-                var yOverlap = dy < self.spriteSize / 2;
+                var xOverlap = dx < self.halfSprite;
+                var yOverlap = dy < self.halfSprite;
                 return xOverlap && yOverlap;
             }
             for (var i = 1; i < this.snake.segments.length - 1; i++) {
@@ -197,6 +213,35 @@ define('app',['exports', 'aurelia-framework', 'aurelia-event-aggregator', 'jquer
             this.ea.publish('grow');
         };
 
+        App.prototype.newSnack = function newSnack(x, y, name, i) {
+            var snack = {
+                position: [x, y],
+                name: name,
+                index: i
+            };
+            return snack;
+        };
+
+        App.prototype.addSnack = function addSnack() {
+            var snack = Math.floor(Math.random() * this.snacks.images.length);
+            var name = this.snacks.images[snack].className;
+            var x = Math.floor(Math.random() * this.canvas.width / this.spriteSize) * this.spriteSize;
+            var y = Math.floor(Math.random() * this.canvas.height / this.spriteSize) * this.spriteSize;
+            this.snacks.onBoard.push(this.newSnack(x, y, name, snack));
+        };
+
+        App.prototype.drawSnacks = function drawSnacks() {
+            var _this5 = this;
+
+            var ctx = this.ctx;
+            this.snacks.onBoard.forEach(function (snack) {
+                ctx.save();
+                ctx.translate(snack.position[0], snack.position[1]);
+                ctx.drawImage(_this5.snacks.images[snack.index], -_this5.halfSprite, -_this5.halfSprite);
+                ctx.restore();
+            });
+        };
+
         App.prototype.drawSegment = function drawSegment(segment, i) {
             var ctx = this.ctx;
             var imageIndex = 1;
@@ -211,7 +256,7 @@ define('app',['exports', 'aurelia-framework', 'aurelia-event-aggregator', 'jquer
             ctx.save();
             ctx.translate(segment.position[0], segment.position[1]);
             imageIndex !== 1 && ctx.rotate(segment.direction * Math.PI / 2);
-            ctx.drawImage(this.snake.images[imageIndex], -this.spriteSize / 2, -this.spriteSize / 2);
+            ctx.drawImage(this.snake.images[imageIndex], -this.halfSprite, -this.halfSprite);
             ctx.restore();
         };
 
@@ -222,12 +267,12 @@ define('app',['exports', 'aurelia-framework', 'aurelia-event-aggregator', 'jquer
         };
 
         App.prototype.setSubscribers = function setSubscribers() {
-            var _this5 = this;
+            var _this6 = this;
 
             var direction = 0;
             this.ea.subscribe('keyPressed', function (response) {
-                if (response.startsWith('Arrow') && _this5.snake.turnSteps == 0) {
-                    _this5.snake.turnSteps = 17;
+                if (response.startsWith('Arrow') && _this6.snake.turnSteps == 0) {
+                    _this6.snake.turnSteps = 17;
                     switch (response) {
                         case 'ArrowRight':
                             direction = 0;
@@ -242,24 +287,24 @@ define('app',['exports', 'aurelia-framework', 'aurelia-event-aggregator', 'jquer
                             direction = 3;
                             break;
                     }
-                    (direction + 2) % 4 !== _this5.snake.segments[0].direction && (_this5.snake.segments[0].direction = direction);
+                    (direction + 2) % 4 !== _this6.snake.segments[0].direction && (_this6.snake.segments[0].direction = direction);
                 }
                 switch (response) {
                     case 'Enter':
-                        _this5.ea.publish('restart');
+                        _this6.ea.publish('restart');
                         break;
                     case ' ':
-                        if (_this5.crawling) {
-                            _this5.ea.publish('pause');
+                        if (_this6.crawling) {
+                            _this6.ea.publish('pause');
                         }
                         break;
                 }
             });
             this.ea.subscribe('restart', function (response) {
-                _this5.restart();
+                _this6.restart();
             });
             this.ea.subscribe('pause', function (response) {
-                _this5.pauseGame();
+                _this6.pauseGame();
             });
         };
 
@@ -271,11 +316,18 @@ define('app',['exports', 'aurelia-framework', 'aurelia-event-aggregator', 'jquer
             };
         };
 
+        App.prototype.clearTimedEvents = function clearTimedEvents() {
+            clearInterval(this.stepTimerHandle);
+            clearInterval(this.fallTimerHandle);
+            clearInterval(this.growTimerHandle);
+            clearInterval(this.speedupTimerHandle);
+            clearInterval(this.snackTimerHandle);
+        };
+
         App.prototype.pauseGame = function pauseGame() {
             this.pause = !this.pause;
             if (this.pause) {
-                clearInterval(this.stepTimerHandle);
-                clearInterval(this.fallTimerHandle);
+                this.clearTimedEvents();
             } else {
                 this.crawl();
             }
@@ -283,8 +335,7 @@ define('app',['exports', 'aurelia-framework', 'aurelia-event-aggregator', 'jquer
 
         App.prototype.restart = function restart() {
             if (!this.pause) {
-                clearInterval(this.stepTimerHandle);
-                clearInterval(this.fallTimerHandle);
+                this.clearTimedEvents();
                 this.initSnake();
                 this.crawl();
             }
@@ -309,6 +360,7 @@ define('app',['exports', 'aurelia-framework', 'aurelia-event-aggregator', 'jquer
             this.snake.steps = 0;
             this.snake.turnSteps = 0;
             this.snake.segments.push(this.segment(0, 1, canvasCenter.x, canvasCenter.y));
+            this.snacks.onBoard = [];
         };
 
         App.prototype.setDomVars = function setDomVars() {
@@ -325,16 +377,17 @@ define('app',['exports', 'aurelia-framework', 'aurelia-event-aggregator', 'jquer
                 top: this.wallSize
             };
             this.snake.images = [(0, _jquery2.default)('.head')[0], (0, _jquery2.default)('.body')[0], (0, _jquery2.default)('.tail')[0]];
+            this.snacks.images = [(0, _jquery2.default)('.axe')[0], (0, _jquery2.default)('.beer')[0], (0, _jquery2.default)('.bunny')[0], (0, _jquery2.default)('.diamond')[0], (0, _jquery2.default)('.gold')[0], (0, _jquery2.default)('.ruby')[0], (0, _jquery2.default)('.skull')[0], (0, _jquery2.default)('.snail')[0], (0, _jquery2.default)('.trash')[0], (0, _jquery2.default)('.viagra')[0]];
         };
 
         App.prototype.attached = function attached() {
-            var _this6 = this;
+            var _this7 = this;
 
             this.setDomVars();
             this.initSnake();
             this.setSubscribers();
             (0, _jquery2.default)(function () {
-                _this6.crawl();
+                _this7.crawl();
             });
         };
 
@@ -552,7 +605,7 @@ define('components/status',['exports', 'aurelia-framework', 'aurelia-event-aggre
         return StatusCustomElement;
     }()) || _class);
 });
-define('text!app.html', ['module'], function(module) { module.exports = "<template>\n    <require from=\"reset.css\"></require>\n    <require from=\"app.css\"></require>\n    <require from=\"components/restart-overlay\"></require>\n    <require from=\"components/status\"></require>\n    <h1 class=\"gameTitle\">${message}</h1>\n    <canvas id=\"arena\"\n            class=\"arena\"></canvas>\n    <div class=\"snakeImages\">\n        <img class=\"head\"\n             src=\"/images/head.png\">\n        <img class=\"body\"\n             src=\"/images/body.png\">\n        <img class=\"tail\"\n             src=\"/images/tail.png\">\n    </div>\n    <restart-overlay></restart-overlay>\n    <status></status>\n</template>"; });
+define('text!app.html', ['module'], function(module) { module.exports = "<template>\n    <require from=\"reset.css\"></require>\n    <require from=\"app.css\"></require>\n    <require from=\"components/restart-overlay\"></require>\n    <require from=\"components/status\"></require>\n    <h1 class=\"gameTitle\">${message}</h1>\n    <canvas id=\"arena\"\n            class=\"arena\"></canvas>\n    <div class=\"snakeImages\">\n        <img class=\"head\"\n             src=\"/images/head.png\">\n        <img class=\"body\"\n             src=\"/images/body.png\">\n        <img class=\"tail\"\n             src=\"/images/tail.png\">\n        <img class=\"axe\"\n             src=\"/images/axe.png\">\n        <img class=\"beer\"\n             src=\"/images/beer.png\">\n        <img class=\"bunny\"\n             src=\"/images/bunny.png\">\n        <img class=\"diamond\"\n             src=\"/images/diamond.png\">\n        <img class=\"gold\"\n             src=\"/images/gold.png\">\n        <img class=\"ruby\"\n             src=\"/images/ruby.png\">\n        <img class=\"skull\"\n             src=\"/images/skull.png\">\n        <img class=\"snail\"\n             src=\"/images/snail.png\">\n        <img class=\"trash\"\n             src=\"/images/trash.png\">\n        <img class=\"viagra\"\n             src=\"/images/viagra.png\">\n    </div>\n    <restart-overlay></restart-overlay>\n    <status></status>\n</template>"; });
 define('text!app.css', ['module'], function(module) { module.exports = "body {\n    position   : relative;\n    user-select: none;\n    overflow   : hidden;\n    font-family: 'Trebuchet MS', sans-serif;\n}\n\n.gameTitle {\n    position      : absolute;\n    z-index       : 2;\n    top           : 0;\n    width         : 100vw;\n    letter-spacing: 1px;\n    font-size     : 20px;\n    line-height   : 24px;\n    text-align    : center;\n    color         : whitesmoke;\n}\n\n.arena {\n    position        : relative;\n    z-index         : 1;\n    width           : calc(100vw - 48px);\n    height          : calc(100vh - 48px);\n    background-color: black;\n    border          : 24px solid crimson;\n}\n\n.snakeImages {\n    display : none;\n    position: absolute;\n    top     : 0;\n    left    : 0;\n    z-index : 0;\n}\n"; });
 define('text!reset.css', ['module'], function(module) { module.exports = "/* http://meyerweb.com/eric/tools/css/reset/ \n   v2.0 | 20110126\n   License: none (public domain)\n*/\n\na, abbr, acronym, address, applet, article, aside, audio, b, big, blockquote, body, canvas, caption, center, cite, code, dd, del, details, dfn, div, dl, dt, em, embed, fieldset, figcaption, figure, footer, form, h1, h2, h3, h4, h5, h6, header, hgroup, html, i, iframe, img, ins, kbd, label, legend, li, mark, menu, nav, object, ol, output, p, pre, q, ruby, s, samp, section, small, span, strike, strong, sub, summary, sup, table, tbody, td, tfoot, th, thead, time, tr, tt, u, ul, var, video {\n    margin        : 0;\n    padding       : 0;\n    border        : 0;\n    font-size     : 100%;\n    font          : inherit;\n    vertical-align: baseline;\n}\n/* HTML5 display-role reset for older browsers */\narticle, aside, details, figcaption, figure, footer, header, hgroup, menu, nav, section {\n    display: block;\n}\n\nbody {\n    line-height: 1;\n}\n\nol, ul {\n    list-style: none;\n}\n\nblockquote, q {\n    quotes: none;\n}\n\nblockquote:after, blockquote:before, q:after, q:before {\n    content: '';\n    content: none;\n}\n\ntable {\n    border-collapse: collapse;\n    border-spacing : 0;\n}\n"; });
 define('text!components/restart-overlay.html', ['module'], function(module) { module.exports = "<template class=\"${showOverlay || pause ? 'show' : ''}\"\n          click.delegate=\"restart()\">\n    <require from=\"components/restart-overlay.css\"></require>\n    <h2 class=\"restart ${!pause ? 'show' : ''}\">Game over.</h2>\n    <h2 class=\"restart ${!pause ? 'show' : ''}\">Click or tap or &lt;enter&gt; to start new game</h2>\n    <h2 class=\"paused ${pause ? 'show' : ''}\">Game paused.</h2>\n    <h2 class=\"paused ${pause ? 'show' : ''}\">Press space to continue</h2>\n\n</template>"; });

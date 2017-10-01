@@ -20,9 +20,20 @@ export class App {
         this.pause = false;
         this.crawling = false;
         this.spriteSize = 16;
+        this.halfSprite = this.spriteSize / 2;
         this.stepTimerHandle = null;
         this.fallTimerHandle = null;
+        this.growTimerHandle = null;
+        this.speedupTimerHandle = null;
+        this.snackTimerHandle = null;
+        this.snacks = {
+            images: [],
+            onBoard: [],
+            snackInterval: 2500
+        }
         this.snake = {
+            images: [],
+            segments: [],
             directions: [
                 [1, 0],
                 [0, 1],
@@ -30,14 +41,12 @@ export class App {
                 [0, -1],
                 [0, 0]
             ],
-            deadSegments: 0,
-            growInterval: 10 * this.spriteSize,
-            images: [],
-            speedUpInterval: 100 * this.spriteSize,
-            segments: [],
-            stepInterval: 10,
             steps: 0,
-            turnSteps: 0
+            turnSteps: 0,
+            deadSegments: 0,
+            stepInterval: 10,
+            growInterval: 3000,
+            speedupInterval: 10000
         }
     }
 
@@ -45,6 +54,15 @@ export class App {
         this.stepTimerHandle = setInterval(() => {
             this.stepNdraw();
         }, this.snake.stepInterval);
+        this.growTimerHandle = setInterval(() => {
+            this.grow();
+        }, this.snake.growInterval);
+        this.speedupTimerHandle = setInterval(() => {
+            this.speedup();
+        }, this.snake.speedupInterval);
+        this.snackTimerHandle = setInterval(() => {
+            this.addSnack();
+        }, this.snacks.snackInterval);
         this.crawling = true;
     }
 
@@ -60,11 +78,10 @@ export class App {
 
     stepNdraw() {
         this.fadeArena();
-        this.snake.steps++;
+        this.drawSnacks();
+        this.snake.steps += 1;
         // limit the rate at which turns are accepted
         (this.snake.turnSteps > 0) && this.snake.turnSteps--;
-        (this.snake.steps % this.snake.growInterval == 0) && this.grow();
-        (this.snake.steps % this.snake.speedUpInterval == 0) && this.speedup();
         this.snake.segments.forEach((segment, i) => {
             (i == 0) ? this.advanceSegment(i) : this.followSegment(i, i - 1);
             this.drawSegment(segment, i);
@@ -83,23 +100,22 @@ export class App {
             }
         });
         if (this.snake.deadSegments >= this.snake.segments.length) {
-            clearInterval(this.fallTimerHandle);
+            this.clearTimedEvents();
             this.keysOn();
             this.gameOver();
         }
     }
 
     floorHit(segment) {
-        return segment.position[1] + this.spriteSize / 2 > this.canvas.height;
+        return segment.position[1] + this.halfSprite > this.canvas.height;
     }
 
     hitWall() {
         let head = this.snake.segments[0];
-        let halfSprite = this.spriteSize / 2;
-        return head.position[0] > this.canvas.width - halfSprite ||
-            head.position[0] < 0 + halfSprite ||
-            head.position[1] > this.canvas.height - halfSprite ||
-            head.position[1] < 0 + halfSprite;
+        return head.position[0] > this.canvas.width - this.halfSprite ||
+            head.position[0] < 0 + this.halfSprite ||
+            head.position[1] > this.canvas.height - this.halfSprite ||
+            head.position[1] < 0 + this.halfSprite;
     }
 
     hitSnake() {
@@ -108,8 +124,8 @@ export class App {
         function overlap(segPos, headPos) {
             let dx = Math.abs(segPos[0] - headPos[0]);
             let dy = Math.abs(segPos[1] - headPos[1]);
-            let xOverlap = dx < self.spriteSize / 2;
-            let yOverlap = dy < self.spriteSize / 2;
+            let xOverlap = dx < self.halfSprite;
+            let yOverlap = dy < self.halfSprite;
             return xOverlap && yOverlap;
         }
         for (let i = 1; i < this.snake.segments.length - 1; i++) {
@@ -185,6 +201,33 @@ export class App {
         this.ea.publish('grow');
     }
 
+    newSnack(x, y, name, i) {
+        let snack = {
+            position: [x, y],
+            name: name,
+            index: i
+        }
+        return snack;
+    }
+
+    addSnack() {
+        let snack = Math.floor(Math.random() * this.snacks.images.length);
+        let name = this.snacks.images[snack].className;
+        let x = Math.floor(Math.random() * this.canvas.width / this.spriteSize) * this.spriteSize;
+        let y = Math.floor(Math.random() * this.canvas.height / this.spriteSize) * this.spriteSize;
+        this.snacks.onBoard.push(this.newSnack(x, y, name, snack));
+    }
+
+    drawSnacks() {
+        let ctx = this.ctx;
+        this.snacks.onBoard.forEach((snack) => {
+            ctx.save();
+            ctx.translate(snack.position[0], snack.position[1]);
+            ctx.drawImage(this.snacks.images[snack.index], -this.halfSprite, -this.halfSprite);
+            ctx.restore();
+        })
+    }
+
     drawSegment(segment, i) {
         let ctx = this.ctx;
         let imageIndex = 1;
@@ -197,7 +240,7 @@ export class App {
         ctx.save();
         ctx.translate(segment.position[0], segment.position[1]);
         (imageIndex !== 1) && ctx.rotate(segment.direction * Math.PI / 2);
-        ctx.drawImage(this.snake.images[imageIndex], -this.spriteSize / 2, -this.spriteSize / 2);
+        ctx.drawImage(this.snake.images[imageIndex], -this.halfSprite, -this.halfSprite);
         ctx.restore();
     }
 
@@ -247,11 +290,18 @@ export class App {
         }
     }
 
+    clearTimedEvents() {
+        clearInterval(this.stepTimerHandle);
+        clearInterval(this.fallTimerHandle);
+        clearInterval(this.growTimerHandle);
+        clearInterval(this.speedupTimerHandle);
+        clearInterval(this.snackTimerHandle);
+    }
+
     pauseGame() {
         this.pause = !this.pause;
         if (this.pause) {
-            clearInterval(this.stepTimerHandle);
-            clearInterval(this.fallTimerHandle);
+            this.clearTimedEvents();
         } else {
             this.crawl();
         }
@@ -259,8 +309,7 @@ export class App {
 
     restart() {
         if (!this.pause) {
-            clearInterval(this.stepTimerHandle);
-            clearInterval(this.fallTimerHandle);
+            this.clearTimedEvents();
             this.initSnake();
             this.crawl();
         }
@@ -285,6 +334,7 @@ export class App {
         this.snake.steps = 0;
         this.snake.turnSteps = 0;
         this.snake.segments.push(this.segment(0, 1, canvasCenter.x, canvasCenter.y));
+        this.snacks.onBoard = [];
     }
 
     setDomVars() {
@@ -304,6 +354,18 @@ export class App {
             $('.head')[0],
             $('.body')[0],
             $('.tail')[0]
+        ]
+        this.snacks.images = [
+            $('.axe')[0],
+            $('.beer')[0],
+            $('.bunny')[0],
+            $('.diamond')[0],
+            $('.gold')[0],
+            $('.ruby')[0],
+            $('.skull')[0],
+            $('.snail')[0],
+            $('.trash')[0],
+            $('.viagra')[0]
         ]
     }
 
