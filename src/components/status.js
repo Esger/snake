@@ -22,6 +22,10 @@ export class StatusCustomElement {
         this.ea.subscribe('grow', response => {
             this.length++;
         });
+        this.ea.subscribe('restart', response => {
+            this.length = 1;
+            this.speed = 0;
+        });
 
     }
 

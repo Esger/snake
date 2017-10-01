@@ -171,6 +171,7 @@ export class App {
         let x = tail.position[0] - this.snake.directions[dir][0] * this.spriteSize;
         let y = tail.position[1] - this.snake.directions[dir][1] * this.spriteSize;
         this.snake.segments.push(this.segment(dir, x, y));
+        this.ea.publish('grow');
     }
 
     drawSegment(segment, i) {
