@@ -21,15 +21,35 @@ export class App {
         this.crawling = false;
         this.spriteSize = 16;
         this.halfSprite = this.spriteSize / 2;
+        this.snackSize = 24;
+        this.halfSnackSize = this.snackSize / 2;
         this.stepTimerHandle = null;
+        this.scoreTimerHandle = null;
         this.fallTimerHandle = null;
         this.growTimerHandle = null;
         this.speedupTimerHandle = null;
         this.snackTimerHandle = null;
+        this.stepInterval = 10;
+        this.scoreInterval = 1000;
+        this.growInterval = 3000;
+        this.speedupInterval = 10000;
+        this.snackInterval = 2500;
+        this.score = 0;
         this.snacks = {
             images: [],
             onBoard: [],
-            snackInterval: 2500
+            methods: {
+                'axe': 'cutSnake',
+                'beer': 'growSlower',
+                'bunny': 'speedup',
+                'diamond': 'score100',
+                'gold': 'score10',
+                'ruby': 'scoreX10',
+                'skull': 'die',
+                'snail': 'slowdown',
+                'trash': 'trashSnacks',
+                'viagra': 'growHarder'
+            }
         }
         this.snake = {
             images: [],
@@ -43,26 +63,26 @@ export class App {
             ],
             steps: 0,
             turnSteps: 0,
-            deadSegments: 0,
-            stepInterval: 10,
-            growInterval: 3000,
-            speedupInterval: 10000
+            deadSegments: 0
         }
     }
 
     crawl() {
         this.stepTimerHandle = setInterval(() => {
             this.stepNdraw();
-        }, this.snake.stepInterval);
+        }, this.stepInterval);
         this.growTimerHandle = setInterval(() => {
             this.grow();
-        }, this.snake.growInterval);
+        }, this.growInterval);
         this.speedupTimerHandle = setInterval(() => {
             this.speedup();
-        }, this.snake.speedupInterval);
+        }, this.speedupInterval);
         this.snackTimerHandle = setInterval(() => {
             this.addSnack();
-        }, this.snacks.snackInterval);
+        }, this.snackInterval);
+        this.scoreTimerHandle = setInterval(() => {
+            this.scoreUpdate();
+        }, this.scoreInterval);
         this.crawling = true;
     }
 
@@ -86,6 +106,9 @@ export class App {
             (i == 0) ? this.advanceSegment(i) : this.followSegment(i, i - 1);
             this.drawSegment(segment, i);
         });
+        let snack = this.hitSnack();
+        // call the function named with value of snack
+        (snack !== '') && this[snack]();
         (this.hitSnake() || this.hitWall()) && this.die();
     }
 
@@ -94,7 +117,7 @@ export class App {
         this.snake.segments.forEach((segment, i) => {
             (segment.direction < 4) && this.advanceSegment(i, true);
             this.drawSegment(segment, i);
-            if (segment.direction < 4 && this.floorHit(segment)) {
+            if (segment.direction < 4 && this.hitFloor(segment)) {
                 this.snake.deadSegments++;
                 segment.direction = 4;
             }
@@ -106,7 +129,7 @@ export class App {
         }
     }
 
-    floorHit(segment) {
+    hitFloor(segment) {
         return segment.position[1] + this.halfSprite > this.canvas.height;
     }
 
@@ -137,18 +160,89 @@ export class App {
         return false;
     }
 
+    hitSnack() {
+        let self = this;
+        let head = this.snake.segments[0];
+        function overlap(snackPos, headPos) {
+            let dx = Math.abs(snackPos[0] - headPos[0]);
+            let dy = Math.abs(snackPos[1] - headPos[1]);
+            let xOverlap = dx < (self.snackSize + self.spriteSize) / 2;
+            let yOverlap = dy < (self.snackSize + self.spriteSize) / 2;
+            return xOverlap && yOverlap;
+        }
+        for (let i = 0; i < this.snacks.onBoard.length - 1; i++) {
+            let snack = this.snacks.onBoard[i];
+            if (overlap(snack.position, head.position)) {
+                (i > -1) && this.snacks.onBoard.splice(i, 1);
+                return this.snacks.methods[snack.name];
+            }
+        }
+        return '';
+    }
+
+    cutSnake() {
+        let halfSnake = Math.floor(this.snake.segments.length / 2)
+        this.snake.segments.splice(-halfSnake);
+    }
+
+    growSlower() {
+        console.log('growSlower');
+    }
+    score100() {
+        console.log('score100');
+    }
+    score10() {
+        console.log('score10');
+    }
+    scoreX10() {
+        console.log('scoreX10');
+    }
+    trashSnacks() {
+        this.snacks.onBoard = [];
+    }
+    growHarder() {
+        console.log('growHarder');
+    }
+
     speedup() {
-        if (this.snake.stepInterval > 0) {
-            this.snake.stepInterval--;
+        if (this.stepInterval > 0) {
+            this.stepInterval -= 1;
+            this.pauseGame();
+            this.pauseGame();
         } else {
             this.snake.segments.forEach((segment) => {
                 segment.speedFactor += 1;
             });
-            this.snake.stepInterval = 7;
+            this.stepInterval = 7;
         }
-        this.pauseGame();
-        this.pauseGame();
-        this.ea.publish('speedup');
+        this.ea.publish('speedChange', 1);
+    }
+
+    slowdown() {
+        console.log('slowdown');
+        if (this.snake.segments[0].speedFactor > 1) {
+            this.snake.segments.forEach((segment) => {
+                segment.speedFactor -= 1;
+            });
+            this.ea.publish('speedChange', -7);
+        } else {
+            if (this.stepInterval < 7) {
+                this.stepInterval += 1;
+                this.pauseGame();
+                this.pauseGame();
+                this.ea.publish('speedChange', -1);
+            }
+        }
+    }
+
+    grow() {
+        let tail = this.snake.segments[this.snake.segments.length - 1];
+        let dir = tail.direction;
+        let factor = tail.speedFactor;
+        let x = tail.position[0] - this.snake.directions[dir][0] * this.spriteSize;
+        let y = tail.position[1] - this.snake.directions[dir][1] * this.spriteSize;
+        this.snake.segments.push(this.segment(dir, factor, x, y));
+        this.ea.publish('grow', this.snake.segments.length);
     }
 
     die() {
@@ -156,6 +250,11 @@ export class App {
         this.crawling = false;
         clearInterval(this.stepTimerHandle);
         this.fall();
+    }
+
+    scoreUpdate() {
+        this.score += this.snake.segments.length;
+        this.ea.publish('score', this.score);
     }
 
     gameOver() {
@@ -191,16 +290,6 @@ export class App {
         this.advanceSegment(i);
     }
 
-    grow() {
-        let tail = this.snake.segments[this.snake.segments.length - 1];
-        let dir = tail.direction;
-        let factor = tail.speedFactor;
-        let x = tail.position[0] - this.snake.directions[dir][0] * this.spriteSize;
-        let y = tail.position[1] - this.snake.directions[dir][1] * this.spriteSize;
-        this.snake.segments.push(this.segment(dir, factor, x, y));
-        this.ea.publish('grow');
-    }
-
     newSnack(x, y, name, i) {
         let snack = {
             position: [x, y],
@@ -213,8 +302,9 @@ export class App {
     addSnack() {
         let snack = Math.floor(Math.random() * this.snacks.images.length);
         let name = this.snacks.images[snack].className;
-        let x = Math.floor(Math.random() * this.canvas.width / this.spriteSize) * this.spriteSize;
-        let y = Math.floor(Math.random() * this.canvas.height / this.spriteSize) * this.spriteSize;
+        // compensate for border width (24);
+        let x = Math.floor(Math.random() * this.canvas.width - 24) + 24;
+        let y = Math.floor(Math.random() * this.canvas.height - 24) + 24;
         this.snacks.onBoard.push(this.newSnack(x, y, name, snack));
     }
 
@@ -223,7 +313,8 @@ export class App {
         this.snacks.onBoard.forEach((snack) => {
             ctx.save();
             ctx.translate(snack.position[0], snack.position[1]);
-            ctx.drawImage(this.snacks.images[snack.index], -this.halfSprite, -this.halfSprite);
+            // snacks are 2x larger
+            ctx.drawImage(this.snacks.images[snack.index], -this.halfSnackSize, -this.halfSnackSize, this.snackSize, this.snackSize);
             ctx.restore();
         })
     }
@@ -296,6 +387,7 @@ export class App {
         clearInterval(this.growTimerHandle);
         clearInterval(this.speedupTimerHandle);
         clearInterval(this.snackTimerHandle);
+        clearInterval(this.scoreTimerHandle);
     }
 
     pauseGame() {
@@ -330,7 +422,7 @@ export class App {
         };
         this.snake.segments = [];
         this.snake.deadSegments = 0;
-        this.snake.stepInterval = 10;
+        this.stepInterval = 10;
         this.snake.steps = 0;
         this.snake.turnSteps = 0;
         this.snake.segments.push(this.segment(0, 1, canvasCenter.x, canvasCenter.y));

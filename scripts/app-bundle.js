@@ -34,15 +34,35 @@ define('app',['exports', 'aurelia-framework', 'aurelia-event-aggregator', 'jquer
             this.crawling = false;
             this.spriteSize = 16;
             this.halfSprite = this.spriteSize / 2;
+            this.snackSize = 24;
+            this.halfSnackSize = this.snackSize / 2;
             this.stepTimerHandle = null;
+            this.scoreTimerHandle = null;
             this.fallTimerHandle = null;
             this.growTimerHandle = null;
             this.speedupTimerHandle = null;
             this.snackTimerHandle = null;
+            this.stepInterval = 10;
+            this.scoreInterval = 1000;
+            this.growInterval = 3000;
+            this.speedupInterval = 10000;
+            this.snackInterval = 2500;
+            this.score = 0;
             this.snacks = {
                 images: [],
                 onBoard: [],
-                snackInterval: 2500
+                methods: {
+                    'axe': 'cutSnake',
+                    'beer': 'growSlower',
+                    'bunny': 'speedup',
+                    'diamond': 'score100',
+                    'gold': 'score10',
+                    'ruby': 'scoreX10',
+                    'skull': 'die',
+                    'snail': 'slowdown',
+                    'trash': 'trashSnacks',
+                    'viagra': 'growHarder'
+                }
             };
             this.snake = {
                 images: [],
@@ -50,10 +70,7 @@ define('app',['exports', 'aurelia-framework', 'aurelia-event-aggregator', 'jquer
                 directions: [[1, 0], [0, 1], [-1, 0], [0, -1], [0, 0]],
                 steps: 0,
                 turnSteps: 0,
-                deadSegments: 0,
-                stepInterval: 10,
-                growInterval: 3000,
-                speedupInterval: 10000
+                deadSegments: 0
             };
         }
 
@@ -62,16 +79,19 @@ define('app',['exports', 'aurelia-framework', 'aurelia-event-aggregator', 'jquer
 
             this.stepTimerHandle = setInterval(function () {
                 _this.stepNdraw();
-            }, this.snake.stepInterval);
+            }, this.stepInterval);
             this.growTimerHandle = setInterval(function () {
                 _this.grow();
-            }, this.snake.growInterval);
+            }, this.growInterval);
             this.speedupTimerHandle = setInterval(function () {
                 _this.speedup();
-            }, this.snake.speedupInterval);
+            }, this.speedupInterval);
             this.snackTimerHandle = setInterval(function () {
                 _this.addSnack();
-            }, this.snacks.snackInterval);
+            }, this.snackInterval);
+            this.scoreTimerHandle = setInterval(function () {
+                _this.scoreUpdate();
+            }, this.scoreInterval);
             this.crawling = true;
         };
 
@@ -99,6 +119,9 @@ define('app',['exports', 'aurelia-framework', 'aurelia-event-aggregator', 'jquer
                 i == 0 ? _this3.advanceSegment(i) : _this3.followSegment(i, i - 1);
                 _this3.drawSegment(segment, i);
             });
+            var snack = this.hitSnack();
+
+            snack !== '' && this[snack]();
             (this.hitSnake() || this.hitWall()) && this.die();
         };
 
@@ -109,7 +132,7 @@ define('app',['exports', 'aurelia-framework', 'aurelia-event-aggregator', 'jquer
             this.snake.segments.forEach(function (segment, i) {
                 segment.direction < 4 && _this4.advanceSegment(i, true);
                 _this4.drawSegment(segment, i);
-                if (segment.direction < 4 && _this4.floorHit(segment)) {
+                if (segment.direction < 4 && _this4.hitFloor(segment)) {
                     _this4.snake.deadSegments++;
                     segment.direction = 4;
                 }
@@ -121,7 +144,7 @@ define('app',['exports', 'aurelia-framework', 'aurelia-event-aggregator', 'jquer
             }
         };
 
-        App.prototype.floorHit = function floorHit(segment) {
+        App.prototype.hitFloor = function hitFloor(segment) {
             return segment.position[1] + this.halfSprite > this.canvas.height;
         };
 
@@ -149,18 +172,94 @@ define('app',['exports', 'aurelia-framework', 'aurelia-event-aggregator', 'jquer
             return false;
         };
 
+        App.prototype.hitSnack = function hitSnack() {
+            var self = this;
+            var head = this.snake.segments[0];
+            function overlap(snackPos, headPos) {
+                var dx = Math.abs(snackPos[0] - headPos[0]);
+                var dy = Math.abs(snackPos[1] - headPos[1]);
+                var xOverlap = dx < (self.snackSize + self.spriteSize) / 2;
+                var yOverlap = dy < (self.snackSize + self.spriteSize) / 2;
+                return xOverlap && yOverlap;
+            }
+            for (var i = 0; i < this.snacks.onBoard.length - 1; i++) {
+                var snack = this.snacks.onBoard[i];
+                if (overlap(snack.position, head.position)) {
+                    i > -1 && this.snacks.onBoard.splice(i, 1);
+                    return this.snacks.methods[snack.name];
+                }
+            }
+            return '';
+        };
+
+        App.prototype.cutSnake = function cutSnake() {
+            var halfSnake = Math.floor(this.snake.segments.length / 2);
+            this.snake.segments.splice(-halfSnake);
+        };
+
+        App.prototype.growSlower = function growSlower() {
+            console.log('growSlower');
+        };
+
+        App.prototype.score100 = function score100() {
+            console.log('score100');
+        };
+
+        App.prototype.score10 = function score10() {
+            console.log('score10');
+        };
+
+        App.prototype.scoreX10 = function scoreX10() {
+            console.log('scoreX10');
+        };
+
+        App.prototype.trashSnacks = function trashSnacks() {
+            this.snacks.onBoard = [];
+        };
+
+        App.prototype.growHarder = function growHarder() {
+            console.log('growHarder');
+        };
+
         App.prototype.speedup = function speedup() {
-            if (this.snake.stepInterval > 0) {
-                this.snake.stepInterval--;
+            if (this.stepInterval > 0) {
+                this.stepInterval -= 1;
+                this.pauseGame();
+                this.pauseGame();
             } else {
                 this.snake.segments.forEach(function (segment) {
                     segment.speedFactor += 1;
                 });
-                this.snake.stepInterval = 7;
+                this.stepInterval = 7;
             }
-            this.pauseGame();
-            this.pauseGame();
-            this.ea.publish('speedup');
+            this.ea.publish('speedChange', 1);
+        };
+
+        App.prototype.slowdown = function slowdown() {
+            console.log('slowdown');
+            if (this.snake.segments[0].speedFactor > 1) {
+                this.snake.segments.forEach(function (segment) {
+                    segment.speedFactor -= 1;
+                });
+                this.ea.publish('speedChange', -7);
+            } else {
+                if (this.stepInterval < 7) {
+                    this.stepInterval += 1;
+                    this.pauseGame();
+                    this.pauseGame();
+                    this.ea.publish('speedChange', -1);
+                }
+            }
+        };
+
+        App.prototype.grow = function grow() {
+            var tail = this.snake.segments[this.snake.segments.length - 1];
+            var dir = tail.direction;
+            var factor = tail.speedFactor;
+            var x = tail.position[0] - this.snake.directions[dir][0] * this.spriteSize;
+            var y = tail.position[1] - this.snake.directions[dir][1] * this.spriteSize;
+            this.snake.segments.push(this.segment(dir, factor, x, y));
+            this.ea.publish('grow', this.snake.segments.length);
         };
 
         App.prototype.die = function die() {
@@ -168,6 +267,11 @@ define('app',['exports', 'aurelia-framework', 'aurelia-event-aggregator', 'jquer
             this.crawling = false;
             clearInterval(this.stepTimerHandle);
             this.fall();
+        };
+
+        App.prototype.scoreUpdate = function scoreUpdate() {
+            this.score += this.snake.segments.length;
+            this.ea.publish('score', this.score);
         };
 
         App.prototype.gameOver = function gameOver() {
@@ -203,16 +307,6 @@ define('app',['exports', 'aurelia-framework', 'aurelia-event-aggregator', 'jquer
             this.advanceSegment(i);
         };
 
-        App.prototype.grow = function grow() {
-            var tail = this.snake.segments[this.snake.segments.length - 1];
-            var dir = tail.direction;
-            var factor = tail.speedFactor;
-            var x = tail.position[0] - this.snake.directions[dir][0] * this.spriteSize;
-            var y = tail.position[1] - this.snake.directions[dir][1] * this.spriteSize;
-            this.snake.segments.push(this.segment(dir, factor, x, y));
-            this.ea.publish('grow');
-        };
-
         App.prototype.newSnack = function newSnack(x, y, name, i) {
             var snack = {
                 position: [x, y],
@@ -225,8 +319,9 @@ define('app',['exports', 'aurelia-framework', 'aurelia-event-aggregator', 'jquer
         App.prototype.addSnack = function addSnack() {
             var snack = Math.floor(Math.random() * this.snacks.images.length);
             var name = this.snacks.images[snack].className;
-            var x = Math.floor(Math.random() * this.canvas.width / this.spriteSize) * this.spriteSize;
-            var y = Math.floor(Math.random() * this.canvas.height / this.spriteSize) * this.spriteSize;
+
+            var x = Math.floor(Math.random() * this.canvas.width - 24) + 24;
+            var y = Math.floor(Math.random() * this.canvas.height - 24) + 24;
             this.snacks.onBoard.push(this.newSnack(x, y, name, snack));
         };
 
@@ -237,7 +332,8 @@ define('app',['exports', 'aurelia-framework', 'aurelia-event-aggregator', 'jquer
             this.snacks.onBoard.forEach(function (snack) {
                 ctx.save();
                 ctx.translate(snack.position[0], snack.position[1]);
-                ctx.drawImage(_this5.snacks.images[snack.index], -_this5.halfSprite, -_this5.halfSprite);
+
+                ctx.drawImage(_this5.snacks.images[snack.index], -_this5.halfSnackSize, -_this5.halfSnackSize, _this5.snackSize, _this5.snackSize);
                 ctx.restore();
             });
         };
@@ -322,6 +418,7 @@ define('app',['exports', 'aurelia-framework', 'aurelia-event-aggregator', 'jquer
             clearInterval(this.growTimerHandle);
             clearInterval(this.speedupTimerHandle);
             clearInterval(this.snackTimerHandle);
+            clearInterval(this.scoreTimerHandle);
         };
 
         App.prototype.pauseGame = function pauseGame() {
@@ -356,7 +453,7 @@ define('app',['exports', 'aurelia-framework', 'aurelia-event-aggregator', 'jquer
             };
             this.snake.segments = [];
             this.snake.deadSegments = 0;
-            this.snake.stepInterval = 10;
+            this.stepInterval = 10;
             this.snake.steps = 0;
             this.snake.turnSteps = 0;
             this.snake.segments.push(this.segment(0, 1, canvasCenter.x, canvasCenter.y));
@@ -581,20 +678,24 @@ define('components/status',['exports', 'aurelia-framework', 'aurelia-event-aggre
             this.ea = eventAggregator;
             this.speed = 0;
             this.length = 1;
+            this.score = 0;
         }
 
         StatusCustomElement.prototype.addEventListeners = function addEventListeners() {
             var _this = this;
 
-            this.ea.subscribe('speedup', function (response) {
-                _this.speed++;
+            this.ea.subscribe('speedChange', function (response) {
+                _this.speed += response;
             });
             this.ea.subscribe('grow', function (response) {
-                _this.length++;
+                _this.length = response;
             });
             this.ea.subscribe('restart', function (response) {
                 _this.length = 1;
                 _this.speed = 0;
+            });
+            this.ea.subscribe('score', function (response) {
+                _this.score = response;
             });
         };
 
@@ -610,6 +711,6 @@ define('text!app.css', ['module'], function(module) { module.exports = "body {\n
 define('text!reset.css', ['module'], function(module) { module.exports = "/* http://meyerweb.com/eric/tools/css/reset/ \n   v2.0 | 20110126\n   License: none (public domain)\n*/\n\na, abbr, acronym, address, applet, article, aside, audio, b, big, blockquote, body, canvas, caption, center, cite, code, dd, del, details, dfn, div, dl, dt, em, embed, fieldset, figcaption, figure, footer, form, h1, h2, h3, h4, h5, h6, header, hgroup, html, i, iframe, img, ins, kbd, label, legend, li, mark, menu, nav, object, ol, output, p, pre, q, ruby, s, samp, section, small, span, strike, strong, sub, summary, sup, table, tbody, td, tfoot, th, thead, time, tr, tt, u, ul, var, video {\n    margin        : 0;\n    padding       : 0;\n    border        : 0;\n    font-size     : 100%;\n    font          : inherit;\n    vertical-align: baseline;\n}\n/* HTML5 display-role reset for older browsers */\narticle, aside, details, figcaption, figure, footer, header, hgroup, menu, nav, section {\n    display: block;\n}\n\nbody {\n    line-height: 1;\n}\n\nol, ul {\n    list-style: none;\n}\n\nblockquote, q {\n    quotes: none;\n}\n\nblockquote:after, blockquote:before, q:after, q:before {\n    content: '';\n    content: none;\n}\n\ntable {\n    border-collapse: collapse;\n    border-spacing : 0;\n}\n"; });
 define('text!components/restart-overlay.html', ['module'], function(module) { module.exports = "<template class=\"${showOverlay || pause ? 'show' : ''}\"\n          click.delegate=\"restart()\">\n    <require from=\"components/restart-overlay.css\"></require>\n    <h2 class=\"restart ${!pause ? 'show' : ''}\">Game over.</h2>\n    <h2 class=\"restart ${!pause ? 'show' : ''}\">Click or tap or &lt;enter&gt; to start new game</h2>\n    <h2 class=\"paused ${pause ? 'show' : ''}\">Game paused.</h2>\n    <h2 class=\"paused ${pause ? 'show' : ''}\">Press space to continue</h2>\n\n</template>"; });
 define('text!components/restart-overlay.css', ['module'], function(module) { module.exports = "restart-overlay {\n    position        : absolute;\n    z-index         : 10;\n    top             : 0;\n    left            : 0;\n    display         : flex;\n    flex-direction  : column;\n    justify-content : space-around;\n    align-items     : center;\n    width           : 100vw;\n    height          : 100vh;\n    background-color: rgba(0,0,0,.7);\n    opacity         : 0;\n    pointer-events  : none;\n    transition      : all .2s;\n}\n\nrestart-overlay.show {\n    opacity       : 1;\n    pointer-events: all;\n}\n\nrestart-overlay h2 {\n    font-size  : 5vh;\n    line-height: 5vh;\n    color      : whitesmoke;\n}\n\n.paused, .restart {\n    display: none;\n}\n\n.paused.show, .restart.show {\n    display: block;\n}\n"; });
-define('text!components/status.html', ['module'], function(module) { module.exports = "<template>\n    <require from=\"components/status.css\"></require>\n    <h2 class=\"statusLine\">Speed: ${speed}&emsp;Length: ${length}</h2>\n</template>"; });
+define('text!components/status.html', ['module'], function(module) { module.exports = "<template>\n    <require from=\"components/status.css\"></require>\n    <h2 class=\"statusLine\">Speed: ${speed}&emsp;Length: ${length}&emsp;Score: ${score}</h2>\n</template>"; });
 define('text!components/status.css', ['module'], function(module) { module.exports = "status {\n    position: absolute;\n    z-index : 2;\n    bottom  : 0;\n    width   : 100vw;\n}\n\n.statusLine {\n    font-size  : 18px;\n    line-height: 30px;\n    color      : wheat;\n    margin-left: 24px;\n}\n"; });
 //# sourceMappingURL=app-bundle.js.map
