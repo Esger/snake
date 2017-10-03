@@ -135,10 +135,14 @@ export class App {
 
     hitWall() {
         let head = this.snake.segments[0];
-        return head.position[0] > this.canvas.width - this.halfSprite ||
+        let wallHit = head.position[0] > this.canvas.width - this.halfSprite ||
             head.position[0] < 0 + this.halfSprite ||
             head.position[1] > this.canvas.height - this.halfSprite ||
             head.position[1] < 0 + this.halfSprite;
+        if (wallHit) {
+            this.ea.publish('snack', 'You hit a wall');
+            return wallHit;
+        }
     }
 
     hitSnake() {
@@ -154,6 +158,7 @@ export class App {
         for (let i = 1; i < this.snake.segments.length - 1; i++) {
             let segment = this.snake.segments[i];
             if (overlap(segment.position, head.position)) {
+                this.ea.publish('snack', 'You tried to eat yourself that&rsquo;s deadly');
                 return true;
             }
         }
@@ -183,39 +188,64 @@ export class App {
     cutSnake() {
         let halfSnake = Math.floor(this.snake.segments.length / 2)
         this.snake.segments.splice(-halfSnake);
+        this.ea.publish('snack', 'Axe: you lost half of your length');
     }
 
+    growHarder() {
+        if (this.growInterval > 500) {
+            this.growInterval -= 500;
+            this.restartIntervals();
+            setTimeout(() => {
+                this.growInterval += 500;
+                this.restartIntervals();
+            }, 15000);
+            this.ea.publish('snack', 'Blue pill: growing harder for 15 seconds');
+        }
+    }
     growSlower() {
-        console.log('growSlower');
+        this.growInterval += 500;
+        this.restartIntervals();
+        setTimeout(() => {
+            this.growInterval -= 500;
+            this.restartIntervals();
+        }, 15000);
+        this.ea.publish('snack', 'Beer: growing slower for 15 seconds');
     }
     score100() {
-        console.log('score100');
+        this.scoreUpdate(1000);
+        this.ea.publish('snack', 'Diamond: you scored 1000 points');
     }
     score10() {
-        console.log('score10');
+        this.scoreUpdate(100);
+        this.ea.publish('snack', 'Gold: you scored 100 points');
     }
     scoreX10() {
-        console.log('scoreX10');
+        if (this.scoreInterval > 250) {
+            this.scoreInterval -= 250;
+            setTimeout(() => {
+                this.scoreInterval += 250;
+            }, 15000);
+            this.ea.publish('snack', 'Ruby: scoring faster for 15 seconds');
+        }
     }
     trashSnacks() {
         this.snacks.onBoard = [];
-    }
-    growHarder() {
-        console.log('growHarder');
+        this.ea.publish('snack', 'Trash: you trashed all extra&rsquo;s');
     }
 
     speedup() {
         if (this.stepInterval > 0) {
             this.stepInterval -= 1;
-            this.pauseGame();
-            this.pauseGame();
+            this.restartIntervals();
+            this.ea.publish('speedChange', 1);
         } else {
             this.snake.segments.forEach((segment) => {
                 segment.speedFactor += 1;
             });
             this.stepInterval = 7;
+            this.ea.publish('speedChange', 7);
         }
-        this.ea.publish('speedChange', 1);
+        this.ea.publish('snack', 'Rabbit: running faster');
     }
 
     slowdown() {
@@ -228,11 +258,11 @@ export class App {
         } else {
             if (this.stepInterval < 7) {
                 this.stepInterval += 1;
-                this.pauseGame();
-                this.pauseGame();
+                this.restartIntervals();
                 this.ea.publish('speedChange', -1);
             }
         }
+        this.ea.publish('snack', 'Snail: running slower');
     }
 
     grow() {
@@ -248,12 +278,16 @@ export class App {
     die() {
         this.keysOff();
         this.crawling = false;
-        clearInterval(this.stepTimerHandle);
+        this.clearTimedEvents()
         this.fall();
     }
 
-    scoreUpdate() {
-        this.score += this.snake.segments.length;
+    scoreUpdate(amount) {
+        if (amount) {
+            this.score += amount;
+        } else {
+            this.score += this.snake.segments.length;
+        }
         this.ea.publish('score', this.score);
     }
 
@@ -312,9 +346,12 @@ export class App {
         let ctx = this.ctx;
         this.snacks.onBoard.forEach((snack) => {
             ctx.save();
+            ctx.strokeStyle = 'goldenrod';
+            ctx.rect(snack.position[0], snack.position[1], this.snackSize, this.snackSize);
+            ctx.stroke();
             ctx.translate(snack.position[0], snack.position[1]);
             // snacks are 2x larger
-            ctx.drawImage(this.snacks.images[snack.index], -this.halfSnackSize, -this.halfSnackSize, this.snackSize, this.snackSize);
+            ctx.drawImage(this.snacks.images[snack.index], 0, 0, this.snackSize, this.snackSize);
             ctx.restore();
         })
     }
@@ -399,10 +436,15 @@ export class App {
         }
     }
 
+    restartIntervals() {
+        this.clearTimedEvents();
+        this.crawl();
+    }
+
     restart() {
         if (!this.pause) {
             this.clearTimedEvents();
-            this.initSnake();
+            this.initStuff();
             this.crawl();
         }
     }
@@ -415,7 +457,7 @@ export class App {
         this.ea.publish('keysOff');
     }
 
-    initSnake() {
+    initStuff() {
         let canvasCenter = {
             x: parseInt(this.$arena.width() / 2, 10),
             y: parseInt(this.$arena.height() / 2, 10)
@@ -427,6 +469,7 @@ export class App {
         this.snake.turnSteps = 0;
         this.snake.segments.push(this.segment(0, 1, canvasCenter.x, canvasCenter.y));
         this.snacks.onBoard = [];
+        this.score = 0;
     }
 
     setDomVars() {
@@ -463,7 +506,7 @@ export class App {
 
     attached() {
         this.setDomVars();
-        this.initSnake();
+        this.initStuff();
         this.setSubscribers();
         $(() => {
             this.crawl();

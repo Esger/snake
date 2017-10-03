@@ -150,7 +150,11 @@ define('app',['exports', 'aurelia-framework', 'aurelia-event-aggregator', 'jquer
 
         App.prototype.hitWall = function hitWall() {
             var head = this.snake.segments[0];
-            return head.position[0] > this.canvas.width - this.halfSprite || head.position[0] < 0 + this.halfSprite || head.position[1] > this.canvas.height - this.halfSprite || head.position[1] < 0 + this.halfSprite;
+            var wallHit = head.position[0] > this.canvas.width - this.halfSprite || head.position[0] < 0 + this.halfSprite || head.position[1] > this.canvas.height - this.halfSprite || head.position[1] < 0 + this.halfSprite;
+            if (wallHit) {
+                this.ea.publish('snack', 'You hit a wall');
+                return wallHit;
+            }
         };
 
         App.prototype.hitSnake = function hitSnake() {
@@ -166,6 +170,7 @@ define('app',['exports', 'aurelia-framework', 'aurelia-event-aggregator', 'jquer
             for (var i = 1; i < this.snake.segments.length - 1; i++) {
                 var segment = this.snake.segments[i];
                 if (overlap(segment.position, head.position)) {
+                    this.ea.publish('snack', 'You tried to eat yourself that&rsquo;s deadly');
                     return true;
                 }
             }
@@ -195,44 +200,75 @@ define('app',['exports', 'aurelia-framework', 'aurelia-event-aggregator', 'jquer
         App.prototype.cutSnake = function cutSnake() {
             var halfSnake = Math.floor(this.snake.segments.length / 2);
             this.snake.segments.splice(-halfSnake);
+            this.ea.publish('snack', 'Axe: you lost half of your length');
+        };
+
+        App.prototype.growHarder = function growHarder() {
+            var _this5 = this;
+
+            if (this.growInterval > 500) {
+                this.growInterval -= 500;
+                this.restartIntervals();
+                setTimeout(function () {
+                    _this5.growInterval += 500;
+                    _this5.restartIntervals();
+                }, 15000);
+                this.ea.publish('snack', 'Blue pill: growing harder for 15 seconds');
+            }
         };
 
         App.prototype.growSlower = function growSlower() {
-            console.log('growSlower');
+            var _this6 = this;
+
+            this.growInterval += 500;
+            this.restartIntervals();
+            setTimeout(function () {
+                _this6.growInterval -= 500;
+                _this6.restartIntervals();
+            }, 15000);
+            this.ea.publish('snack', 'Beer: growing slower for 15 seconds');
         };
 
         App.prototype.score100 = function score100() {
-            console.log('score100');
+            this.scoreUpdate(1000);
+            this.ea.publish('snack', 'Diamond: you scored 1000 points');
         };
 
         App.prototype.score10 = function score10() {
-            console.log('score10');
+            this.scoreUpdate(100);
+            this.ea.publish('snack', 'Gold: you scored 100 points');
         };
 
         App.prototype.scoreX10 = function scoreX10() {
-            console.log('scoreX10');
+            var _this7 = this;
+
+            if (this.scoreInterval > 250) {
+                this.scoreInterval -= 250;
+                setTimeout(function () {
+                    _this7.scoreInterval += 250;
+                }, 15000);
+                this.ea.publish('snack', 'Ruby: scoring faster for 15 seconds');
+            }
         };
 
         App.prototype.trashSnacks = function trashSnacks() {
             this.snacks.onBoard = [];
-        };
-
-        App.prototype.growHarder = function growHarder() {
-            console.log('growHarder');
+            this.ea.publish('snack', 'Trash: you trashed all extra&rsquo;s');
         };
 
         App.prototype.speedup = function speedup() {
             if (this.stepInterval > 0) {
                 this.stepInterval -= 1;
-                this.pauseGame();
-                this.pauseGame();
+                this.restartIntervals();
+                this.ea.publish('speedChange', 1);
             } else {
                 this.snake.segments.forEach(function (segment) {
                     segment.speedFactor += 1;
                 });
                 this.stepInterval = 7;
+                this.ea.publish('speedChange', 7);
             }
-            this.ea.publish('speedChange', 1);
+            this.ea.publish('snack', 'Rabbit: running faster');
         };
 
         App.prototype.slowdown = function slowdown() {
@@ -245,11 +281,11 @@ define('app',['exports', 'aurelia-framework', 'aurelia-event-aggregator', 'jquer
             } else {
                 if (this.stepInterval < 7) {
                     this.stepInterval += 1;
-                    this.pauseGame();
-                    this.pauseGame();
+                    this.restartIntervals();
                     this.ea.publish('speedChange', -1);
                 }
             }
+            this.ea.publish('snack', 'Snail: running slower');
         };
 
         App.prototype.grow = function grow() {
@@ -265,12 +301,16 @@ define('app',['exports', 'aurelia-framework', 'aurelia-event-aggregator', 'jquer
         App.prototype.die = function die() {
             this.keysOff();
             this.crawling = false;
-            clearInterval(this.stepTimerHandle);
+            this.clearTimedEvents();
             this.fall();
         };
 
-        App.prototype.scoreUpdate = function scoreUpdate() {
-            this.score += this.snake.segments.length;
+        App.prototype.scoreUpdate = function scoreUpdate(amount) {
+            if (amount) {
+                this.score += amount;
+            } else {
+                this.score += this.snake.segments.length;
+            }
             this.ea.publish('score', this.score);
         };
 
@@ -326,14 +366,17 @@ define('app',['exports', 'aurelia-framework', 'aurelia-event-aggregator', 'jquer
         };
 
         App.prototype.drawSnacks = function drawSnacks() {
-            var _this5 = this;
+            var _this8 = this;
 
             var ctx = this.ctx;
             this.snacks.onBoard.forEach(function (snack) {
                 ctx.save();
+                ctx.strokeStyle = 'goldenrod';
+                ctx.rect(snack.position[0], snack.position[1], _this8.snackSize, _this8.snackSize);
+                ctx.stroke();
                 ctx.translate(snack.position[0], snack.position[1]);
 
-                ctx.drawImage(_this5.snacks.images[snack.index], -_this5.halfSnackSize, -_this5.halfSnackSize, _this5.snackSize, _this5.snackSize);
+                ctx.drawImage(_this8.snacks.images[snack.index], 0, 0, _this8.snackSize, _this8.snackSize);
                 ctx.restore();
             });
         };
@@ -363,12 +406,12 @@ define('app',['exports', 'aurelia-framework', 'aurelia-event-aggregator', 'jquer
         };
 
         App.prototype.setSubscribers = function setSubscribers() {
-            var _this6 = this;
+            var _this9 = this;
 
             var direction = 0;
             this.ea.subscribe('keyPressed', function (response) {
-                if (response.startsWith('Arrow') && _this6.snake.turnSteps == 0) {
-                    _this6.snake.turnSteps = 17;
+                if (response.startsWith('Arrow') && _this9.snake.turnSteps == 0) {
+                    _this9.snake.turnSteps = 17;
                     switch (response) {
                         case 'ArrowRight':
                             direction = 0;
@@ -383,24 +426,24 @@ define('app',['exports', 'aurelia-framework', 'aurelia-event-aggregator', 'jquer
                             direction = 3;
                             break;
                     }
-                    (direction + 2) % 4 !== _this6.snake.segments[0].direction && (_this6.snake.segments[0].direction = direction);
+                    (direction + 2) % 4 !== _this9.snake.segments[0].direction && (_this9.snake.segments[0].direction = direction);
                 }
                 switch (response) {
                     case 'Enter':
-                        _this6.ea.publish('restart');
+                        _this9.ea.publish('restart');
                         break;
                     case ' ':
-                        if (_this6.crawling) {
-                            _this6.ea.publish('pause');
+                        if (_this9.crawling) {
+                            _this9.ea.publish('pause');
                         }
                         break;
                 }
             });
             this.ea.subscribe('restart', function (response) {
-                _this6.restart();
+                _this9.restart();
             });
             this.ea.subscribe('pause', function (response) {
-                _this6.pauseGame();
+                _this9.pauseGame();
             });
         };
 
@@ -430,10 +473,15 @@ define('app',['exports', 'aurelia-framework', 'aurelia-event-aggregator', 'jquer
             }
         };
 
+        App.prototype.restartIntervals = function restartIntervals() {
+            this.clearTimedEvents();
+            this.crawl();
+        };
+
         App.prototype.restart = function restart() {
             if (!this.pause) {
                 this.clearTimedEvents();
-                this.initSnake();
+                this.initStuff();
                 this.crawl();
             }
         };
@@ -446,7 +494,7 @@ define('app',['exports', 'aurelia-framework', 'aurelia-event-aggregator', 'jquer
             this.ea.publish('keysOff');
         };
 
-        App.prototype.initSnake = function initSnake() {
+        App.prototype.initStuff = function initStuff() {
             var canvasCenter = {
                 x: parseInt(this.$arena.width() / 2, 10),
                 y: parseInt(this.$arena.height() / 2, 10)
@@ -458,6 +506,7 @@ define('app',['exports', 'aurelia-framework', 'aurelia-event-aggregator', 'jquer
             this.snake.turnSteps = 0;
             this.snake.segments.push(this.segment(0, 1, canvasCenter.x, canvasCenter.y));
             this.snacks.onBoard = [];
+            this.score = 0;
         };
 
         App.prototype.setDomVars = function setDomVars() {
@@ -478,13 +527,13 @@ define('app',['exports', 'aurelia-framework', 'aurelia-event-aggregator', 'jquer
         };
 
         App.prototype.attached = function attached() {
-            var _this7 = this;
+            var _this10 = this;
 
             this.setDomVars();
-            this.initSnake();
+            this.initStuff();
             this.setSubscribers();
             (0, _jquery2.default)(function () {
-                _this7.crawl();
+                _this10.crawl();
             });
         };
 
@@ -679,6 +728,7 @@ define('components/status',['exports', 'aurelia-framework', 'aurelia-event-aggre
             this.speed = 0;
             this.length = 1;
             this.score = 0;
+            this.snack = '';
         }
 
         StatusCustomElement.prototype.addEventListeners = function addEventListeners() {
@@ -697,6 +747,12 @@ define('components/status',['exports', 'aurelia-framework', 'aurelia-event-aggre
             this.ea.subscribe('score', function (response) {
                 _this.score = response;
             });
+            this.ea.subscribe('snack', function (response) {
+                _this.snack = response;
+                setTimeout(function () {
+                    _this.snack = '';
+                }, 15000);
+            });
         };
 
         StatusCustomElement.prototype.attached = function attached() {
@@ -711,6 +767,6 @@ define('text!app.css', ['module'], function(module) { module.exports = "body {\n
 define('text!reset.css', ['module'], function(module) { module.exports = "/* http://meyerweb.com/eric/tools/css/reset/ \n   v2.0 | 20110126\n   License: none (public domain)\n*/\n\na, abbr, acronym, address, applet, article, aside, audio, b, big, blockquote, body, canvas, caption, center, cite, code, dd, del, details, dfn, div, dl, dt, em, embed, fieldset, figcaption, figure, footer, form, h1, h2, h3, h4, h5, h6, header, hgroup, html, i, iframe, img, ins, kbd, label, legend, li, mark, menu, nav, object, ol, output, p, pre, q, ruby, s, samp, section, small, span, strike, strong, sub, summary, sup, table, tbody, td, tfoot, th, thead, time, tr, tt, u, ul, var, video {\n    margin        : 0;\n    padding       : 0;\n    border        : 0;\n    font-size     : 100%;\n    font          : inherit;\n    vertical-align: baseline;\n}\n/* HTML5 display-role reset for older browsers */\narticle, aside, details, figcaption, figure, footer, header, hgroup, menu, nav, section {\n    display: block;\n}\n\nbody {\n    line-height: 1;\n}\n\nol, ul {\n    list-style: none;\n}\n\nblockquote, q {\n    quotes: none;\n}\n\nblockquote:after, blockquote:before, q:after, q:before {\n    content: '';\n    content: none;\n}\n\ntable {\n    border-collapse: collapse;\n    border-spacing : 0;\n}\n"; });
 define('text!components/restart-overlay.html', ['module'], function(module) { module.exports = "<template class=\"${showOverlay || pause ? 'show' : ''}\"\n          click.delegate=\"restart()\">\n    <require from=\"components/restart-overlay.css\"></require>\n    <h2 class=\"restart ${!pause ? 'show' : ''}\">Game over.</h2>\n    <h2 class=\"restart ${!pause ? 'show' : ''}\">Click or tap or &lt;enter&gt; to start new game</h2>\n    <h2 class=\"paused ${pause ? 'show' : ''}\">Game paused.</h2>\n    <h2 class=\"paused ${pause ? 'show' : ''}\">Press space to continue</h2>\n\n</template>"; });
 define('text!components/restart-overlay.css', ['module'], function(module) { module.exports = "restart-overlay {\n    position        : absolute;\n    z-index         : 10;\n    top             : 0;\n    left            : 0;\n    display         : flex;\n    flex-direction  : column;\n    justify-content : space-around;\n    align-items     : center;\n    width           : 100vw;\n    height          : 100vh;\n    background-color: rgba(0,0,0,.7);\n    opacity         : 0;\n    pointer-events  : none;\n    transition      : all .2s;\n}\n\nrestart-overlay.show {\n    opacity       : 1;\n    pointer-events: all;\n}\n\nrestart-overlay h2 {\n    font-size  : 5vh;\n    line-height: 5vh;\n    color      : whitesmoke;\n}\n\n.paused, .restart {\n    display: none;\n}\n\n.paused.show, .restart.show {\n    display: block;\n}\n"; });
-define('text!components/status.html', ['module'], function(module) { module.exports = "<template>\n    <require from=\"components/status.css\"></require>\n    <h2 class=\"statusLine\">Speed: ${speed}&emsp;Length: ${length}&emsp;Score: ${score}</h2>\n</template>"; });
-define('text!components/status.css', ['module'], function(module) { module.exports = "status {\n    position: absolute;\n    z-index : 2;\n    bottom  : 0;\n    width   : 100vw;\n}\n\n.statusLine {\n    font-size  : 18px;\n    line-height: 30px;\n    color      : wheat;\n    margin-left: 24px;\n}\n"; });
+define('text!components/status.html', ['module'], function(module) { module.exports = "<template>\n    <require from=\"components/status.css\"></require>\n    <h2 class=\"statusLine\">\n        <span>Speed:</span><span class=\"speed\">${speed}</span>\n        <span>Length:</span><span class=\"length\">${length}</span>\n        <span>Score:</span><span class=\"score\">${score}</span>\n        <span class=\"snack\"\n              innerhtml.bind=\"snack\"></span>\n    </h2>\n</template>"; });
+define('text!components/status.css', ['module'], function(module) { module.exports = "status {\n    position: absolute;\n    z-index : 2;\n    bottom  : 0;\n    width   : 100vw;\n}\n\n.statusLine {\n    font-size  : 18px;\n    line-height: 30px;\n    color      : wheat;\n    margin-left: 24px;\n}\n\n.length, .score, .snack, .speed {\n    margin-right: 10px;\n}\n"; });
 //# sourceMappingURL=app-bundle.js.map

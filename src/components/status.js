@@ -14,6 +14,7 @@ export class StatusCustomElement {
         this.speed = 0;
         this.length = 1;
         this.score = 0;
+        this.snack = '';
     }
 
     addEventListeners() {
@@ -29,6 +30,12 @@ export class StatusCustomElement {
         });
         this.ea.subscribe('score', response => {
             this.score = response;
+        });
+        this.ea.subscribe('snack', response => {
+            this.snack = response;
+            setTimeout(() => {
+                this.snack = '';
+            }, 15000);
         });
 
     }
