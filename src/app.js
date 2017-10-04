@@ -297,6 +297,7 @@ export class App {
 
     advanceSegment(i, accellerate) {
         let segment = this.snake.segments[i];
+        // when falling accellerate = true
         (accellerate) && (segment.speedFactor *= this.accelleration);
         segment.position[0] += parseInt(this.snake.directions[segment.direction][0] * segment.speedFactor, 10);
         segment.position[1] += parseInt(this.snake.directions[segment.direction][1] * segment.speedFactor, 10);
