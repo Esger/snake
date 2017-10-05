@@ -178,7 +178,7 @@ define('components/status',['exports', 'aurelia-framework', 'aurelia-event-aggre
 
             this.ea = eventAggregator;
             this.speed = 0;
-            this.length = 1;
+            this.length = 2;
             this.score = 0;
             this.snack = '';
         }
@@ -809,34 +809,18 @@ define('services/timing-service',['exports', 'aurelia-framework', 'aurelia-event
             this.growInterval = 3000;
             this.speedupInterval = 10000;
             this.snackInterval = 2500;
+            this.setSubscribers();
         }
 
-        TimingService.prototype.crawl = function crawl() {
-            var _this = this;
-
-            this.stepTimerHandle = setInterval(function () {
-                _this.stepNdraw();
-            }, this.stepInterval);
-            this.growTimerHandle = setInterval(function () {
-                _this.grow();
-            }, this.growInterval);
-            this.speedupTimerHandle = setInterval(function () {
-                _this.speedup();
-            }, this.speedupInterval);
-            this.snackTimerHandle = setInterval(function () {
-                _this.addSnack();
-            }, this.snackInterval);
-            this.scoreTimerHandle = setInterval(function () {
-                _this.scoreUpdate();
-            }, this.scoreInterval);
+        TimingService.prototype.startGame = function startGame() {
             this.crawling = true;
         };
 
         TimingService.prototype.fall = function fall() {
-            var _this2 = this;
+            var _this = this;
 
             this.fallTimerHandle = setInterval(function () {
-                _this2.fallNdraw();
+                _this.fallNdraw();
             }, 0);
         };
 
@@ -850,11 +834,13 @@ define('services/timing-service',['exports', 'aurelia-framework', 'aurelia-event
         };
 
         TimingService.prototype.pauseGame = function pauseGame() {
-            this.pause = !this.pause;
-            if (this.pause) {
-                this.clearTimedEvents();
-            } else {
-                this.crawl();
+            if (this.crawling) {
+                this.pause = !this.pause;
+                if (this.pause) {
+                    this.clearTimedEvents();
+                } else {
+                    this.startGame();
+                }
             }
         };
 
@@ -867,39 +853,35 @@ define('services/timing-service',['exports', 'aurelia-framework', 'aurelia-event
             if (!this.pause) {
                 this.clearTimedEvents();
                 this.initStuff();
-                this.crawl();
+                this.startGame();
             }
         };
 
         TimingService.prototype.setSubscribers = function setSubscribers() {
-            var _this3 = this;
+            var _this2 = this;
 
             var direction = 0;
             this.ea.subscribe('keyPressed', function (response) {
                 switch (response) {
                     case 'Enter':
-                        _this3.ea.publish('restart');
+                        _this2.ea.publish('start');
                         break;
                     case ' ':
-                        if (_this3.crawling) {
-                            _this3.ea.publish('pause');
-                        }
+                        _this2.ea.publish('pause');
                         break;
                 }
             });
-            this.ea.subscribe('restart', function (response) {
-                _this3.restart();
+            this.ea.subscribe('start', function (response) {
+                _this2.restart();
             });
             this.ea.subscribe('pause', function (response) {
-                _this3.pauseGame();
+                _this2.pauseGame();
             });
         };
 
         TimingService.prototype.initStuff = function initStuff() {
             this.stepInterval = 10;
         };
-
-        TimingService.prototype.attached = function attached() {};
 
         return TimingService;
     }()) || _class);
@@ -908,7 +890,7 @@ define('text!app.html', ['module'], function(module) { module.exports = "<templa
 define('text!app.css', ['module'], function(module) { module.exports = "body {\n    position   : relative;\n    user-select: none;\n    overflow   : hidden;\n    font-family: 'Trebuchet MS', sans-serif;\n}\n\n.gameTitle {\n    position      : absolute;\n    z-index       : 2;\n    top           : 0;\n    width         : 100vw;\n    letter-spacing: 1px;\n    font-size     : 20px;\n    line-height   : 24px;\n    text-align    : center;\n    color         : whitesmoke;\n}\n"; });
 define('text!components/game-screen.html', ['module'], function(module) { module.exports = "<template>\n    <require from=\"components/game-screen.css\"\n             ref=\"game-screen\"></require>\n    <div class=\"snakeImages\">\n        <!-- read these in from the screen service model  -->\n        <img class=\"head\"\n             src=\"/images/head.png\">\n        <img class=\"body\"\n             src=\"/images/body.png\">\n        <img class=\"tail\"\n             src=\"/images/tail.png\">\n        <img class=\"axe\"\n             src=\"/images/axe.png\">\n        <img class=\"beer\"\n             src=\"/images/beer.png\">\n        <img class=\"bunny\"\n             src=\"/images/bunny.png\">\n        <img class=\"diamond\"\n             src=\"/images/diamond.png\">\n        <img class=\"gold\"\n             src=\"/images/gold.png\">\n        <img class=\"ruby\"\n             src=\"/images/ruby.png\">\n        <img class=\"skull\"\n             src=\"/images/skull.png\">\n        <img class=\"snail\"\n             src=\"/images/snail.png\">\n        <img class=\"trash\"\n             src=\"/images/trash.png\">\n        <img class=\"viagra\"\n             src=\"/images/viagra.png\">\n    </div>\n    <canvas id=\"arena\"\n            class=\"arena\"></canvas>\n</template>"; });
 define('text!reset.css', ['module'], function(module) { module.exports = "/* http://meyerweb.com/eric/tools/css/reset/ \n   v2.0 | 20110126\n   License: none (public domain)\n*/\n\na, abbr, acronym, address, applet, article, aside, audio, b, big, blockquote, body, canvas, caption, center, cite, code, dd, del, details, dfn, div, dl, dt, em, embed, fieldset, figcaption, figure, footer, form, h1, h2, h3, h4, h5, h6, header, hgroup, html, i, iframe, img, ins, kbd, label, legend, li, mark, menu, nav, object, ol, output, p, pre, q, ruby, s, samp, section, small, span, strike, strong, sub, summary, sup, table, tbody, td, tfoot, th, thead, time, tr, tt, u, ul, var, video {\n    margin        : 0;\n    padding       : 0;\n    border        : 0;\n    font-size     : 100%;\n    font          : inherit;\n    vertical-align: baseline;\n}\n/* HTML5 display-role reset for older browsers */\narticle, aside, details, figcaption, figure, footer, header, hgroup, menu, nav, section {\n    display: block;\n}\n\nbody {\n    line-height: 1;\n}\n\nol, ul {\n    list-style: none;\n}\n\nblockquote, q {\n    quotes: none;\n}\n\nblockquote:after, blockquote:before, q:after, q:before {\n    content: '';\n    content: none;\n}\n\ntable {\n    border-collapse: collapse;\n    border-spacing : 0;\n}\n"; });
-define('text!components/restart-overlay.html', ['module'], function(module) { module.exports = "<template class=\"${showOverlay || pause ? 'show' : ''}\"\n          click.delegate=\"start()\">\n    <require from=\"components/restart-overlay.css\"></require>\n    <h2 class=\"restart ${!pause && !firstGame ? 'show' : ''}\">Game over.</h2>\n    <h2 class=\"restart ${!pause ? 'show' : ''}\">Click or tap or &lt;enter&gt; to start new game</h2>\n    <h2 class=\"paused ${pause ? 'show' : ''}\">Game paused.</h2>\n    <h2 class=\"paused ${pause ? 'show' : ''}\">Press space to continue</h2>\n\n</template>"; });
+define('text!components/restart-overlay.html', ['module'], function(module) { module.exports = "<template class=\"${showOverlay || pause ? 'show' : ''}\"\n          click.delegate=\"start()\">\n    <require from=\"components/restart-overlay.css\"></require>\n    <h2 class=\"restart ${!pause && !firstGame ? 'show' : ''}\">Game over</h2>\n    <h2 class=\"restart ${!pause ? 'show' : ''}\">Click or tap or &lt;enter&gt; to start new game</h2>\n    <h2 class=\"paused ${pause ? 'show' : ''}\">Game paused</h2>\n    <h2 class=\"paused ${pause ? 'show' : ''}\">Press space to continue</h2>\n\n</template>"; });
 define('text!components/game-screen.css', ['module'], function(module) { module.exports = ".arena {\n    position        : relative;\n    z-index         : 1;\n    width           : calc(100vw - 48px);\n    height          : calc(100vh - 48px);\n    background-color: black;\n    border          : 24px solid crimson;\n}\n\n.snakeImages {\n    display : none;\n    position: absolute;\n    top     : 0;\n    left    : 0;\n    z-index : 0;\n}\n"; });
 define('text!components/status.html', ['module'], function(module) { module.exports = "<template>\n    <require from=\"components/status.css\"></require>\n    <h2 class=\"statusLine\">\n        <span>Speed:</span><span class=\"speed\">${speed}</span>\n        <span>Length:</span><span class=\"length\">${length}</span>\n        <span>Score:</span><span class=\"score\">${score}</span>\n        <span class=\"snack\"\n              innerhtml.bind=\"snack\"></span>\n    </h2>\n</template>"; });
 define('text!components/restart-overlay.css', ['module'], function(module) { module.exports = "restart-overlay {\n    position        : absolute;\n    z-index         : 10;\n    top             : 0;\n    left            : 0;\n    display         : flex;\n    flex-direction  : column;\n    justify-content : space-around;\n    align-items     : center;\n    width           : 100vw;\n    height          : 100vh;\n    background-color: rgba(0,0,0,.7);\n    opacity         : 0;\n    pointer-events  : none;\n    transition      : all .2s;\n}\n\nrestart-overlay.show {\n    opacity       : 1;\n    pointer-events: all;\n}\n\nrestart-overlay h2 {\n    font-size  : 5vh;\n    line-height: 5vh;\n    color      : whitesmoke;\n}\n\n.paused, .restart {\n    display: none;\n}\n\n.paused.show, .restart.show {\n    display: block;\n}\n"; });

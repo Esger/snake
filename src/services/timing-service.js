@@ -23,25 +23,25 @@ export class TimingService {
         this.growInterval = 3000;
         this.speedupInterval = 10000;
         this.snackInterval = 2500;
-
+        this.setSubscribers();
     }
 
-    crawl() {
-        this.stepTimerHandle = setInterval(() => {
-            this.stepNdraw();
-        }, this.stepInterval);
-        this.growTimerHandle = setInterval(() => {
-            this.grow();
-        }, this.growInterval);
-        this.speedupTimerHandle = setInterval(() => {
-            this.speedup();
-        }, this.speedupInterval);
-        this.snackTimerHandle = setInterval(() => {
-            this.addSnack();
-        }, this.snackInterval);
-        this.scoreTimerHandle = setInterval(() => {
-            this.scoreUpdate();
-        }, this.scoreInterval);
+    startGame() {
+        // this.stepTimerHandle = setInterval(() => {
+        //     this.stepNdraw();
+        // }, this.stepInterval);
+        // this.growTimerHandle = setInterval(() => {
+        //     this.grow();
+        // }, this.growInterval);
+        // this.speedupTimerHandle = setInterval(() => {
+        //     this.speedup();
+        // }, this.speedupInterval);
+        // this.snackTimerHandle = setInterval(() => {
+        //     this.addSnack();
+        // }, this.snackInterval);
+        // this.scoreTimerHandle = setInterval(() => {
+        //     this.scoreUpdate();
+        // }, this.scoreInterval);
         this.crawling = true;
     }
 
@@ -61,11 +61,13 @@ export class TimingService {
     }
 
     pauseGame() {
-        this.pause = !this.pause;
-        if (this.pause) {
-            this.clearTimedEvents();
-        } else {
-            this.crawl();
+        if (this.crawling) {
+            this.pause = !this.pause;
+            if (this.pause) {
+                this.clearTimedEvents();
+            } else {
+                this.startGame();
+            }
         }
     }
 
@@ -78,7 +80,7 @@ export class TimingService {
         if (!this.pause) {
             this.clearTimedEvents();
             this.initStuff();
-            this.crawl();
+            this.startGame();
         }
     }
 
@@ -86,13 +88,13 @@ export class TimingService {
         let direction = 0;
         this.ea.subscribe('keyPressed', response => {
             switch (response) {
-                case 'Enter': this.ea.publish('restart');
+                case 'Enter': this.ea.publish('start');
                     break;
-                case ' ': if (this.crawling) { this.ea.publish('pause'); }
+                case ' ': this.ea.publish('pause');
                     break;
             }
         });
-        this.ea.subscribe('restart', response => {
+        this.ea.subscribe('start', response => {
             this.restart();
         });
         this.ea.subscribe('pause', response => {
@@ -107,6 +109,4 @@ export class TimingService {
     // gameScreen.fadeArena();
     // gameScreen.drawSnacks();
 
-    attached() {
-    }
 }

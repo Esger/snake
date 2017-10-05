@@ -12,7 +12,7 @@ export class StatusCustomElement {
     constructor(eventAggregator) {
         this.ea = eventAggregator;
         this.speed = 0;
-        this.length = 1;
+        this.length = 2;
         this.score = 0;
         this.snack = '';
     }
