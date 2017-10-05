@@ -47,10 +47,10 @@ export class SnakeService {
         this.snake.segments.forEach((segment, i) => {
             (i == 0) ? this.advanceSegment(i) : this.followSegment(i, i - 1);
         });
-        let snack = this.hitSnack();
+        // let snack = this.hitSnack();
         // call the function named with value of snack
-        (snack !== '') && this[snack]();
-        (this.hitSnake() || this.hitWall()) && this.die();
+        // (snack !== '') && this[snack]();
+        // (this.hitSnake() || this.hitWall()) && this.die();
     }
 
     fallNdraw() {

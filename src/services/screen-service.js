@@ -18,13 +18,15 @@ export class ScreenService {
         this.canvasCenter = {};
     }
 
-    drawSegment(segment) {
+    drawSnake(segments) {
         let ctx = this.ctx;
-        ctx.save();
-        ctx.translate(segment.position[0], segment.position[1]);
-        (segment.type !== 1) && ctx.rotate(segment.direction * Math.PI / 2);
-        ctx.drawImage(this.snakeImages[segment.type], -this.halfSprite, -this.halfSprite);
-        ctx.restore();
+        segments.forEach((segment) => {
+            ctx.save();
+            ctx.translate(segment.position[0], segment.position[1]);
+            (segment.type !== 1) && ctx.rotate(segment.direction * Math.PI / 2);
+            ctx.drawImage(this.snakeImages[segment.type], -this.halfSprite, -this.halfSprite);
+            ctx.restore();
+        });
     }
 
     drawSnack(snack) {

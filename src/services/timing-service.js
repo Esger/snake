@@ -1,12 +1,16 @@
 import { inject } from 'aurelia-framework';
 import { EventAggregator } from 'aurelia-event-aggregator';
 import { SnakeService } from './snake-service';
+import { ScreenService } from './screen-service';
 
-@inject(EventAggregator, SnakeService)
+@inject(EventAggregator, SnakeService, ScreenService)
 
 export class TimingService {
-    constructor(eventAggregator, snakeService) {
+    constructor(eventAggregator, snakeService, screenService) {
         this.ea = eventAggregator;
+        this.snakeService = snakeService;
+        this.screenService = screenService;
+
         this.pause = false;
         this.crawling = false;
         this.stepTimerHandle = null;
@@ -15,18 +19,13 @@ export class TimingService {
         this.growTimerHandle = null;
         this.speedupTimerHandle = null;
         this.snackTimerHandle = null;
-        this.stepInterval = 10;
-        this.scoreInterval = 1000;
-        this.growInterval = 3000;
-        this.speedupInterval = 10000;
-        this.snackInterval = 2500;
         this.setSubscribers();
     }
 
     startGame() {
-        // this.stepTimerHandle = setInterval(() => {
-        //     this.stepNdraw();
-        // }, this.stepInterval);
+        this.resetIntervals();
+        this.snakeService.initSnake();
+        this.crawl();
         // this.growTimerHandle = setInterval(() => {
         //     this.grow();
         // }, this.growInterval);
@@ -39,7 +38,15 @@ export class TimingService {
         // this.scoreTimerHandle = setInterval(() => {
         //     this.scoreUpdate();
         // }, this.scoreInterval);
+    }
+
+    crawl() {
         this.crawling = true;
+        this.stepTimerHandle = setInterval(() => {
+            this.snakeService.step();
+            this.screenService.fadeArena();
+            this.screenService.drawSnake(this.snakeService.snake.segments);
+        }, this.stepInterval);
     }
 
     fall() {
@@ -63,7 +70,7 @@ export class TimingService {
             if (this.pause) {
                 this.clearTimedEvents();
             } else {
-                this.startGame();
+                this.crawl();
             }
         }
     }
@@ -76,7 +83,7 @@ export class TimingService {
     restart() {
         if (!this.pause) {
             this.clearTimedEvents();
-            this.initStuff();
+            this.resetIntervals();
             this.startGame();
         }
     }
@@ -99,11 +106,12 @@ export class TimingService {
         });
     }
 
-    initStuff() {
+    resetIntervals() {
         this.stepInterval = 10;
+        this.scoreInterval = 1000;
+        this.growInterval = 3000;
+        this.speedupInterval = 10000;
+        this.snackInterval = 2500;
     }
-
-    // gameScreen.fadeArena();
-    // gameScreen.drawSnacks();
 
 }
