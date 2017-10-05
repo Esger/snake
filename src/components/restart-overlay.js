@@ -11,20 +11,22 @@ export class RestartOverlayCustomElement {
 
     constructor(eventAggregator) {
         this.ea = eventAggregator;
-        this.showOverlay = false;
+        this.showOverlay = true;
+        this.firstGame = true;
         this.pause = false;
     }
 
-    restart() {
-        this.ea.publish('restart');
+    start() {
+        this.ea.publish('start');
         this.showOverlay = false;
+        this.firstGame = false;
     }
 
     addEventListeners() {
         this.ea.subscribe('gameOver', response => {
             this.showOverlay = true;
         });
-        this.ea.subscribe('restart', response => {
+        this.ea.subscribe('start', response => {
             this.showOverlay = false;
         });
         this.ea.subscribe('pause', response => {
