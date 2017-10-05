@@ -1,34 +1,14 @@
 <template>
-    <require from="components/game-screen.css"
-             ref="game-screen"></require>
+    <require from="components/game-screen.css"></require>
     <div class="snakeImages">
-        <!-- read these in from the screen service model  -->
-        <img class="head"
-             src="/images/head.png">
-        <img class="body"
-             src="/images/body.png">
-        <img class="tail"
-             src="/images/tail.png">
-        <img class="axe"
-             src="/images/axe.png">
-        <img class="beer"
-             src="/images/beer.png">
-        <img class="bunny"
-             src="/images/bunny.png">
-        <img class="diamond"
-             src="/images/diamond.png">
-        <img class="gold"
-             src="/images/gold.png">
-        <img class="ruby"
-             src="/images/ruby.png">
-        <img class="skull"
-             src="/images/skull.png">
-        <img class="snail"
-             src="/images/snail.png">
-        <img class="trash"
-             src="/images/trash.png">
-        <img class="viagra"
-             src="/images/viagra.png">
+        <img repeat.for="image of snakeParts"
+             class.bind="image"
+             src="/images/${image}.png">
+    </div>
+    <div class="snackImages">
+        <img repeat.for="image of snacks"
+             class.bind="image"
+             src="/images/${image}.png">
     </div>
     <canvas id="arena"
             class="arena"></canvas>

@@ -7,7 +7,7 @@
     border          : 24px solid crimson;
 }
 
-.snakeImages {
+.snackImages, .snakeImages {
     display : none;
     position: absolute;
     top     : 0;

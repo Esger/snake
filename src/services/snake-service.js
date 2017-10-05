@@ -1,15 +1,13 @@
-import {
-    inject
-} from 'aurelia-framework';
-import {
-    EventAggregator
-} from 'aurelia-event-aggregator';
+import { inject } from 'aurelia-framework';
+import { EventAggregator } from 'aurelia-event-aggregator';
+import { ScreenService } from './screen-service'
 
-@inject(EventAggregator)
+@inject(EventAggregator, ScreenService)
 
 export class SnakeService {
-    constructor(eventAggregator) {
+    constructor(eventAggregator, screenService) {
         this.ea = eventAggregator;
+        this.screenService = screenService;
         this.snake = {
             segments: [],
             directions: [
@@ -23,9 +21,6 @@ export class SnakeService {
             turnSteps: 0,
             deadSegments: 0
         }
-        this.accelleration = 1.01;
-        this.score = 0;
-
         this.setSubscribers();
     }
 
@@ -45,13 +40,12 @@ export class SnakeService {
         });
     }
 
-    stepNdraw() {
+    step() {
         this.snake.steps += 1;
         // limit the rate at which turns are accepted
         (this.snake.turnSteps > 0) && this.snake.turnSteps--;
         this.snake.segments.forEach((segment, i) => {
             (i == 0) ? this.advanceSegment(i) : this.followSegment(i, i - 1);
-            gameScreen.drawSegment(segment, i);
         });
         let snack = this.hitSnack();
         // call the function named with value of snack
@@ -60,10 +54,8 @@ export class SnakeService {
     }
 
     fallNdraw() {
-        gameScreen.fadeArena();
         this.snake.segments.forEach((segment, i) => {
             (segment.direction < 4) && this.advanceSegment(i, true);
-            gameScreen.drawSegment(segment, i);
             if (segment.direction < 4 && this.hitFloor(segment)) {
                 this.snake.deadSegments++;
                 segment.direction = 4;
@@ -72,8 +64,8 @@ export class SnakeService {
 
         // Where does this go?
         if (this.snake.deadSegments >= this.snake.segments.length) {
-            this.clearTimedEvents();
-            this.keysOn();
+            // this.clearTimedEvents();
+            // this.keysOn();
             this.gameOver();
         }
     }
@@ -292,33 +284,25 @@ export class SnakeService {
                     case 'ArrowUp': direction = 3;
                         break;
                 }
+                // prevent going in opposite direction
                 (((direction + 2) % 4) !== this.snake.segments[0].direction) && (this.snake.segments[0].direction = direction);
             }
-            switch (response) {
-                case 'Enter': this.ea.publish('restart');
-                    break;
-                case ' ': if (this.crawling) { this.ea.publish('pause'); }
-                    break;
-            }
-        });
-        this.ea.subscribe('restart', response => {
-            this.restart();
-        });
-        this.ea.subscribe('pause', response => {
-            this.pauseGame();
         });
     }
 
-    initStuff() {
-        let canvasCenter = {
-            x: parseInt(gameScreen.$arena.width() / 2, 10),
-            y: parseInt(gameScreen.$arena.height() / 2, 10)
-        };
+    setCenter() {
+        this.center = this.screenService.canvasCenter;
+    }
+
+    initSnake() {
+        this.accelleration = 1.01;
+        this.score = 0;
+
         this.snake.segments = [];
         this.snake.deadSegments = 0;
         this.snake.steps = 0;
         this.snake.turnSteps = 0;
-        this.snake.segments.push(this.segment(0, 1, canvasCenter.x, canvasCenter.y));
+        this.snake.segments.push(this.segment(0, 1, this.center.x, this.center.y));
         let lastSegment = this.snake.segments.length - 1;
         this.snake.segments[lastSegment].index = lastSegment;
         this.snake.segments[lastSegment].type = 0; // head

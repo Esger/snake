@@ -1,14 +1,11 @@
-import {
-    inject
-} from 'aurelia-framework';
-import {
-    EventAggregator
-} from 'aurelia-event-aggregator';
+import { inject } from 'aurelia-framework';
+import { EventAggregator } from 'aurelia-event-aggregator';
+import { SnakeService } from './snake-service';
 
-@inject(EventAggregator)
+@inject(EventAggregator, SnakeService)
 
 export class TimingService {
-    constructor(eventAggregator) {
+    constructor(eventAggregator, snakeService) {
         this.ea = eventAggregator;
         this.pause = false;
         this.crawling = false;
