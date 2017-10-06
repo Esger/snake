@@ -45,8 +45,9 @@ export class SnakeService {
         this.snake.steps += 1;
         // limit the rate at which turns are accepted
         (this.snake.turnSteps > 0) && this.snake.turnSteps--;
+        this.advanceSegment(0);
         this.snake.segments.forEach((segment, i) => {
-            (i == 0) ? this.advanceSegment(i) : this.followSegment(i, i - 1);
+            (i > 0) && this.followSegment(i);
         });
         // let snack = this.hitSnack();
         // call the function named with value of snack
@@ -62,9 +63,9 @@ export class SnakeService {
         segment.position[1] += parseInt(this.snake.directions[segment.direction][1] * this.snake.stepSize, 10);
     }
 
-    followSegment(i, j) {
+    followSegment(i) {
         let segment = this.snake.segments[i];
-        let preceder = this.snake.segments[j];
+        let preceder = this.snake.segments[i - 1];
         let dx = Math.abs(preceder.position[0] - segment.position[0]);
         let dy = Math.abs(preceder.position[1] - segment.position[1]);
         let axis = (segment.direction % 2 == 0) ? 'x' : 'y';
@@ -203,15 +204,6 @@ export class SnakeService {
     trashSnacks() {
         this.snacks.onBoard = [];
         this.ea.publish('snack', 'Trash: you trashed all extra&rsquo;s');
-    }
-
-    speedup() {
-        if (this.stepInterval > 0) {
-            this.stepInterval -= 1;
-            this.restartIntervals();
-            this.ea.publish('speedChange', 1);
-        }
-        this.ea.publish('snack', 'Rabbit: running faster');
     }
 
     slowdown() {

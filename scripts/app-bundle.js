@@ -216,7 +216,7 @@ define('components/status',['exports', 'aurelia-framework', 'aurelia-event-aggre
             var _this = this;
 
             this.ea.subscribe('speedChange', function (response) {
-                _this.speed += response;
+                _this.speed = response;
             });
             this.ea.subscribe('grow', function (response) {
                 _this.length = response;
@@ -328,24 +328,22 @@ define('services/screen-service',['exports', 'aurelia-framework', 'aurelia-event
         ScreenService.prototype.drawSnake = function drawSnake(segments) {
             var _this = this;
 
-            var ctx = this.ctx;
             segments.forEach(function (segment) {
-                ctx.save();
-                ctx.translate(segment.position[0], segment.position[1]);
-                segment.type !== 1 && ctx.rotate(segment.direction * Math.PI / 2);
-                ctx.drawImage(_this.snakeImages[segment.type], -_this.halfSprite, -_this.halfSprite);
-                ctx.restore();
+                _this.ctx.save();
+                _this.ctx.translate(segment.position[0], segment.position[1]);
+                segment.type !== 1 && _this.ctx.rotate(segment.direction * Math.PI / 2);
+                _this.ctx.drawImage(_this.snakeImages[segment.type], -_this.halfSprite, -_this.halfSprite);
+                _this.ctx.restore();
             });
         };
 
         ScreenService.prototype.drawSnack = function drawSnack(snack) {
-            var ctx = this.ctx;
-            ctx.save();
+            this.ctx.save();
 
-            ctx.translate(snack.position[0], snack.position[1]);
+            this.ctx.translate(snack.position[0], snack.position[1]);
 
-            ctx.drawImage(this.snackImages[snack.index], 0, 0, this.snackSize, this.snackSize);
-            ctx.restore();
+            this.ctx.drawImage(this.snackImages[snack.index], 0, 0, this.snackSize, this.snackSize);
+            this.ctx.restore();
         };
 
         ScreenService.prototype.drawSnacks = function drawSnacks() {
@@ -355,9 +353,8 @@ define('services/screen-service',['exports', 'aurelia-framework', 'aurelia-event
         };
 
         ScreenService.prototype.fadeArena = function fadeArena() {
-            var ctx = this.ctx;
-            ctx.fillStyle = 'rgba(0,0,0,.1)';
-            ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+            this.ctx.fillStyle = 'rgba(0,0,0,.1)';
+            this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
         };
 
         ScreenService.prototype.setDomVars = function setDomVars($arena, snakeImages, snackImages) {
@@ -482,8 +479,9 @@ define('services/snake-service',['exports', 'aurelia-framework', 'aurelia-event-
             this.snake.steps += 1;
 
             this.snake.turnSteps > 0 && this.snake.turnSteps--;
+            this.advanceSegment(0);
             this.snake.segments.forEach(function (segment, i) {
-                i == 0 ? _this.advanceSegment(i) : _this.followSegment(i, i - 1);
+                i > 0 && _this.followSegment(i);
             });
         };
 
@@ -495,9 +493,9 @@ define('services/snake-service',['exports', 'aurelia-framework', 'aurelia-event-
             segment.position[1] += parseInt(this.snake.directions[segment.direction][1] * this.snake.stepSize, 10);
         };
 
-        SnakeService.prototype.followSegment = function followSegment(i, j) {
+        SnakeService.prototype.followSegment = function followSegment(i) {
             var segment = this.snake.segments[i];
-            var preceder = this.snake.segments[j];
+            var preceder = this.snake.segments[i - 1];
             var dx = Math.abs(preceder.position[0] - segment.position[0]);
             var dy = Math.abs(preceder.position[1] - segment.position[1]);
             var axis = segment.direction % 2 == 0 ? 'x' : 'y';
@@ -645,15 +643,6 @@ define('services/snake-service',['exports', 'aurelia-framework', 'aurelia-event-
             this.ea.publish('snack', 'Trash: you trashed all extra&rsquo;s');
         };
 
-        SnakeService.prototype.speedup = function speedup() {
-            if (this.stepInterval > 0) {
-                this.stepInterval -= 1;
-                this.restartIntervals();
-                this.ea.publish('speedChange', 1);
-            }
-            this.ea.publish('snack', 'Rabbit: running faster');
-        };
-
         SnakeService.prototype.slowdown = function slowdown() {
             console.log('slowdown');
             if (this.stepInterval < 7) {
@@ -767,58 +756,61 @@ define('services/timing-service',['exports', 'aurelia-framework', 'aurelia-event
             this.snakeService = snakeService;
             this.screenService = screenService;
 
-            this.pause = false;
             this.crawling = false;
-            this.stepTimerHandle = null;
-            this.scoreTimerHandle = null;
-            this.fallTimerHandle = null;
-            this.growTimerHandle = null;
-            this.speedupTimerHandle = null;
-            this.snackTimerHandle = null;
+
+            this.pause = false;
+
+            this.speed = 0;
+
+
             this.setSubscribers();
         }
 
         TimingService.prototype.startGame = function startGame() {
             this.resetIntervals();
             this.snakeService.initSnake();
+            this.resumeGame();
+        };
+
+        TimingService.prototype.resumeGame = function resumeGame() {
             this.crawl();
             this.grow();
+
+            this.drawScreen();
+        };
+
+        TimingService.prototype.drawScreen = function drawScreen() {
+            var _this = this;
+
+            this.screenService.fadeArena();
+            this.screenService.drawSnake(this.snakeService.snake.segments);
+            this.animationHandle = requestAnimationFrame(function () {
+                _this.drawScreen();
+            });
         };
 
         TimingService.prototype.crawl = function crawl() {
-            var _this = this;
+            var _this2 = this;
 
             this.crawling = true;
             this.stepTimerHandle = setInterval(function () {
-                _this.snakeService.step();
-                _this.screenService.fadeArena();
-                _this.screenService.drawSnake(_this.snakeService.snake.segments);
+                _this2.snakeService.step();
             }, this.stepInterval);
         };
 
         TimingService.prototype.grow = function grow() {
-            var _this2 = this;
+            var _this3 = this;
 
             this.growTimerHandle = setInterval(function () {
-                _this2.snakeService.grow();
+                _this3.snakeService.grow();
             }, this.growInterval);
         };
 
-        TimingService.prototype.fall = function fall() {
-            var _this3 = this;
-
-            this.fallTimerHandle = setInterval(function () {
-                _this3.fallNdraw();
-            }, 0);
-        };
-
         TimingService.prototype.clearTimedEvents = function clearTimedEvents() {
+            cancelAnimationFrame(this.drawScreen);
             clearInterval(this.stepTimerHandle);
-            clearInterval(this.fallTimerHandle);
             clearInterval(this.growTimerHandle);
             clearInterval(this.speedupTimerHandle);
-            clearInterval(this.snackTimerHandle);
-            clearInterval(this.scoreTimerHandle);
         };
 
         TimingService.prototype.pauseGame = function pauseGame() {
@@ -827,20 +819,14 @@ define('services/timing-service',['exports', 'aurelia-framework', 'aurelia-event
                 if (this.pause) {
                     this.clearTimedEvents();
                 } else {
-                    this.crawl();
+                    this.resumeGame();
                 }
             }
-        };
-
-        TimingService.prototype.restartIntervals = function restartIntervals() {
-            this.clearTimedEvents();
-            this.crawl();
         };
 
         TimingService.prototype.restart = function restart() {
             if (!this.pause) {
                 this.clearTimedEvents();
-                this.resetIntervals();
                 this.startGame();
             }
         };
@@ -871,8 +857,9 @@ define('services/timing-service',['exports', 'aurelia-framework', 'aurelia-event
             this.stepInterval = 40;
             this.scoreInterval = 1000;
             this.growInterval = 3000;
-            this.speedupInterval = 10000;
+            this.speedupInterval = 1000;
             this.snackInterval = 2500;
+            this.speed = 0;
         };
 
         return TimingService;

@@ -19,7 +19,7 @@ export class StatusCustomElement {
 
     addEventListeners() {
         this.ea.subscribe('speedChange', response => {
-            this.speed += response;
+            this.speed = response;
         });
         this.ea.subscribe('grow', response => {
             this.length = response;

@@ -19,26 +19,24 @@ export class ScreenService {
     }
 
     drawSnake(segments) {
-        let ctx = this.ctx;
         segments.forEach((segment) => {
-            ctx.save();
-            ctx.translate(segment.position[0], segment.position[1]);
-            (segment.type !== 1) && ctx.rotate(segment.direction * Math.PI / 2);
-            ctx.drawImage(this.snakeImages[segment.type], -this.halfSprite, -this.halfSprite);
-            ctx.restore();
+            this.ctx.save();
+            this.ctx.translate(segment.position[0], segment.position[1]);
+            (segment.type !== 1) && this.ctx.rotate(segment.direction * Math.PI / 2);
+            this.ctx.drawImage(this.snakeImages[segment.type], -this.halfSprite, -this.halfSprite);
+            this.ctx.restore();
         });
     }
 
     drawSnack(snack) {
-        let ctx = this.ctx;
-        ctx.save();
+        this.ctx.save();
         // ctx.strokeStyle = 'goldenrod';
         // ctx.rect(snack.position[0], snack.position[1], this.snackSize, this.snackSize);
         // ctx.stroke();
-        ctx.translate(snack.position[0], snack.position[1]);
+        this.ctx.translate(snack.position[0], snack.position[1]);
         // snacks are 2x larger
-        ctx.drawImage(this.snackImages[snack.index], 0, 0, this.snackSize, this.snackSize);
-        ctx.restore();
+        this.ctx.drawImage(this.snackImages[snack.index], 0, 0, this.snackSize, this.snackSize);
+        this.ctx.restore();
     }
 
     drawSnacks() {
@@ -48,9 +46,8 @@ export class ScreenService {
     }
 
     fadeArena() {
-        let ctx = this.ctx;
-        ctx.fillStyle = 'rgba(0,0,0,.1)';
-        ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        this.ctx.fillStyle = 'rgba(0,0,0,.1)';
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
     }
 
     setDomVars($arena, snakeImages, snackImages) {

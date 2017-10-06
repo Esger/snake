@@ -11,25 +11,23 @@ export class TimingService {
         this.snakeService = snakeService;
         this.screenService = screenService;
 
-        this.pause = false;
         this.crawling = false;
-        this.stepTimerHandle = null;
-        this.scoreTimerHandle = null;
-        this.fallTimerHandle = null;
-        this.growTimerHandle = null;
-        this.speedupTimerHandle = null;
-        this.snackTimerHandle = null;
+        // this.fallTimerHandle = null;
+        // this.growTimerHandle = null;
+        // this.scoreTimerHandle = null;
+        // this.stepTimerHandle = null;
+        this.pause = false;
+        // this.snackTimerHandle = null;
+        this.speed = 0;
+        // this.speedupTimerHandle = null;
+
         this.setSubscribers();
     }
 
     startGame() {
         this.resetIntervals();
         this.snakeService.initSnake();
-        this.crawl();
-        this.grow();
-        // this.speedupTimerHandle = setInterval(() => {
-        //     this.speedup();
-        // }, this.speedupInterval);
+        this.resumeGame();
         // this.snackTimerHandle = setInterval(() => {
         //     this.addSnack();
         // }, this.snackInterval);
@@ -38,12 +36,23 @@ export class TimingService {
         // }, this.scoreInterval);
     }
 
+    resumeGame() {
+        this.crawl();
+        this.grow();
+        // this.speedUp();
+        this.drawScreen();
+    }
+
+    drawScreen() {
+        this.screenService.fadeArena();
+        this.screenService.drawSnake(this.snakeService.snake.segments);
+        this.animationHandle = requestAnimationFrame(() => { this.drawScreen() });
+    }
+
     crawl() {
         this.crawling = true;
         this.stepTimerHandle = setInterval(() => {
             this.snakeService.step();
-            this.screenService.fadeArena();
-            this.screenService.drawSnake(this.snakeService.snake.segments);
         }, this.stepInterval);
     }
 
@@ -53,19 +62,32 @@ export class TimingService {
         }, this.growInterval);
     }
 
-    fall() {
-        this.fallTimerHandle = setInterval(() => {
-            this.fallNdraw();
-        }, 0);
-    }
+    // speedUp() {
+    //     this.speedupTimerHandle = setInterval(() => {
+    //         if (this.stepInterval > 0) {
+    //             this.speed += 1;
+    //             this.stepInterval -= 1;
+    //             this.clearTimedEvents();
+    //             this.resumeGame();
+    //             this.ea.publish('speedChange', this.speed);
+    //         }
+    //     }, this.speedupInterval);
+    // }
+
+    // fall() {
+    //     this.fallTimerHandle = setInterval(() => {
+    //         this.fallNdraw();
+    //     }, 0);
+    // }
 
     clearTimedEvents() {
+        cancelAnimationFrame(this.drawScreen);
         clearInterval(this.stepTimerHandle);
-        clearInterval(this.fallTimerHandle);
         clearInterval(this.growTimerHandle);
         clearInterval(this.speedupTimerHandle);
-        clearInterval(this.snackTimerHandle);
-        clearInterval(this.scoreTimerHandle);
+        // clearInterval(this.fallTimerHandle);
+        // clearInterval(this.snackTimerHandle);
+        // clearInterval(this.scoreTimerHandle);
     }
 
     pauseGame() {
@@ -74,20 +96,14 @@ export class TimingService {
             if (this.pause) {
                 this.clearTimedEvents();
             } else {
-                this.crawl();
+                this.resumeGame();
             }
         }
-    }
-
-    restartIntervals() {
-        this.clearTimedEvents();
-        this.crawl();
     }
 
     restart() {
         if (!this.pause) {
             this.clearTimedEvents();
-            this.resetIntervals();
             this.startGame();
         }
     }
@@ -114,8 +130,9 @@ export class TimingService {
         this.stepInterval = 40;
         this.scoreInterval = 1000;
         this.growInterval = 3000;
-        this.speedupInterval = 10000;
+        this.speedupInterval = 1000;
         this.snackInterval = 2500;
+        this.speed = 0;
     }
 
 }
