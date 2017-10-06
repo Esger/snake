@@ -24,9 +24,10 @@ export class SnakeService {
         this.setSubscribers();
     }
 
-    segment(direction, speedFactor, x, y) {
+    segment(direction, speedFactor, index, x, y) {
         return {
             direction: direction,
+            index: index,
             position: [x, y],
             speedFactor: speedFactor,
             type: 2 // 'tail'
@@ -112,8 +113,8 @@ export class SnakeService {
         function overlap(snackPos, headPos) {
             let dx = Math.abs(snackPos[0] - headPos[0]);
             let dy = Math.abs(snackPos[1] - headPos[1]);
-            let xOverlap = dx < (self.snackSize + self.spriteSize) / 2;
-            let yOverlap = dy < (self.snackSize + self.spriteSize) / 2;
+            let xOverlap = dx < (self.snackSize + self.snake.segmentSize) / 2;
+            let yOverlap = dy < (self.snackSize + self.snake.segmentSize) / 2;
             return xOverlap && yOverlap;
         }
         for (let i = 0; i < this.snacks.onBoard.length - 1; i++) {
@@ -207,15 +208,14 @@ export class SnakeService {
     }
 
     grow() {
-        let tail = this.snake.segments[this.snake.segments.length - 1];
+        let lastSegment = this.snake.segments.length;
+        let tail = this.snake.segments[lastSegment - 1];
         let dir = tail.direction;
         let factor = tail.speedFactor;
-        let x = tail.position[0] - this.snake.directions[dir][0] * this.spriteSize;
-        let y = tail.position[1] - this.snake.directions[dir][1] * this.spriteSize;
-        this.snake.segments.push(this.segment(dir, factor, x, y));
-        let lastSegment = this.snake.segments.length - 1;
-        this.snake.segments[lastSegment].index = lastSegment;
-        this.snake.segments[lastSegment - 1].type = 1; // body
+        let x = tail.position[0] - this.snake.directions[dir][0] * this.snake.segmentSize;
+        let y = tail.position[1] - this.snake.directions[dir][1] * this.snake.segmentSize;
+        (lastSegment > 1) && (tail.type = 1); // body
+        this.snake.segments.push(this.segment(dir, factor, lastSegment, x, y));
         this.ea.publish('grow', this.snake.segments.length);
     }
 
@@ -255,12 +255,12 @@ export class SnakeService {
         let axis = (segment.direction % 2 == 0) ? 'x' : 'y';
         if (preceder.direction !== segment.direction) {
             if (axis == 'x') {
-                if (dx < this.spriteSize && dy > this.spriteSize) {
+                if (dx < this.snake.segmentSize && dy > this.snake.segmentSize) {
                     segment.direction = preceder.direction;
                     segment.position[0] = preceder.position[0];
                 }
             } else {
-                if (dy < this.spriteSize && dx > this.spriteSize) {
+                if (dy < this.snake.segmentSize && dx > this.snake.segmentSize) {
                     segment.direction = preceder.direction;
                     segment.position[1] = preceder.position[1];
                 }
@@ -297,15 +297,14 @@ export class SnakeService {
     initSnake() {
         this.accelleration = 1.01;
         this.score = 0;
-
+        this.snake.segmentSize = this.screenService.spriteSize;
         this.snake.segments = [];
         this.snake.deadSegments = 0;
         this.snake.steps = 0;
         this.snake.turnSteps = 0;
-        this.snake.segments.push(this.segment(0, 1, this.center.x, this.center.y));
-        let lastSegment = this.snake.segments.length - 1;
-        this.snake.segments[lastSegment].index = lastSegment;
-        this.snake.segments[lastSegment].type = 0; // head
+        this.snake.segments.push(this.segment(0, 1, 0, this.center.x, this.center.y));
+        this.snake.segments[0].index = 0;
+        this.snake.segments[0].type = 0; // head
         this.score = 0;
     }
 

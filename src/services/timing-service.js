@@ -26,9 +26,9 @@ export class TimingService {
         this.resetIntervals();
         this.snakeService.initSnake();
         this.crawl();
-        // this.growTimerHandle = setInterval(() => {
-        //     this.grow();
-        // }, this.growInterval);
+        this.growTimerHandle = setInterval(() => {
+            this.snakeService.grow();
+        }, this.growInterval);
         // this.speedupTimerHandle = setInterval(() => {
         //     this.speedup();
         // }, this.speedupInterval);

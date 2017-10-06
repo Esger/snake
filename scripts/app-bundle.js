@@ -481,9 +481,10 @@ define('services/snake-service',['exports', 'aurelia-framework', 'aurelia-event-
             this.setSubscribers();
         }
 
-        SnakeService.prototype.segment = function segment(direction, speedFactor, x, y) {
+        SnakeService.prototype.segment = function segment(direction, speedFactor, index, x, y) {
             return {
                 direction: direction,
+                index: index,
                 position: [x, y],
                 speedFactor: speedFactor,
                 type: 2 };
@@ -562,8 +563,8 @@ define('services/snake-service',['exports', 'aurelia-framework', 'aurelia-event-
             function overlap(snackPos, headPos) {
                 var dx = Math.abs(snackPos[0] - headPos[0]);
                 var dy = Math.abs(snackPos[1] - headPos[1]);
-                var xOverlap = dx < (self.snackSize + self.spriteSize) / 2;
-                var yOverlap = dy < (self.snackSize + self.spriteSize) / 2;
+                var xOverlap = dx < (self.snackSize + self.snake.segmentSize) / 2;
+                var yOverlap = dy < (self.snackSize + self.snake.segmentSize) / 2;
                 return xOverlap && yOverlap;
             }
             for (var i = 0; i < this.snacks.onBoard.length - 1; i++) {
@@ -668,15 +669,14 @@ define('services/snake-service',['exports', 'aurelia-framework', 'aurelia-event-
         };
 
         SnakeService.prototype.grow = function grow() {
-            var tail = this.snake.segments[this.snake.segments.length - 1];
+            var lastSegment = this.snake.segments.length;
+            var tail = this.snake.segments[lastSegment - 1];
             var dir = tail.direction;
             var factor = tail.speedFactor;
-            var x = tail.position[0] - this.snake.directions[dir][0] * this.spriteSize;
-            var y = tail.position[1] - this.snake.directions[dir][1] * this.spriteSize;
-            this.snake.segments.push(this.segment(dir, factor, x, y));
-            var lastSegment = this.snake.segments.length - 1;
-            this.snake.segments[lastSegment].index = lastSegment;
-            this.snake.segments[lastSegment - 1].type = 1;
+            var x = tail.position[0] - this.snake.directions[dir][0] * this.snake.segmentSize;
+            var y = tail.position[1] - this.snake.directions[dir][1] * this.snake.segmentSize;
+            lastSegment > 1 && (tail.type = 1);
+            this.snake.segments.push(this.segment(dir, factor, lastSegment, x, y));
             this.ea.publish('grow', this.snake.segments.length);
         };
 
@@ -716,12 +716,12 @@ define('services/snake-service',['exports', 'aurelia-framework', 'aurelia-event-
             var axis = segment.direction % 2 == 0 ? 'x' : 'y';
             if (preceder.direction !== segment.direction) {
                 if (axis == 'x') {
-                    if (dx < this.spriteSize && dy > this.spriteSize) {
+                    if (dx < this.snake.segmentSize && dy > this.snake.segmentSize) {
                         segment.direction = preceder.direction;
                         segment.position[0] = preceder.position[0];
                     }
                 } else {
-                    if (dy < this.spriteSize && dx > this.spriteSize) {
+                    if (dy < this.snake.segmentSize && dx > this.snake.segmentSize) {
                         segment.direction = preceder.direction;
                         segment.position[1] = preceder.position[1];
                     }
@@ -764,15 +764,14 @@ define('services/snake-service',['exports', 'aurelia-framework', 'aurelia-event-
         SnakeService.prototype.initSnake = function initSnake() {
             this.accelleration = 1.01;
             this.score = 0;
-
+            this.snake.segmentSize = this.screenService.spriteSize;
             this.snake.segments = [];
             this.snake.deadSegments = 0;
             this.snake.steps = 0;
             this.snake.turnSteps = 0;
-            this.snake.segments.push(this.segment(0, 1, this.center.x, this.center.y));
-            var lastSegment = this.snake.segments.length - 1;
-            this.snake.segments[lastSegment].index = lastSegment;
-            this.snake.segments[lastSegment].type = 0;
+            this.snake.segments.push(this.segment(0, 1, 0, this.center.x, this.center.y));
+            this.snake.segments[0].index = 0;
+            this.snake.segments[0].type = 0;
             this.score = 0;
         };
 
@@ -815,27 +814,32 @@ define('services/timing-service',['exports', 'aurelia-framework', 'aurelia-event
         }
 
         TimingService.prototype.startGame = function startGame() {
+            var _this = this;
+
             this.resetIntervals();
             this.snakeService.initSnake();
             this.crawl();
+            this.growTimerHandle = setInterval(function () {
+                _this.snakeService.grow();
+            }, this.growInterval);
         };
 
         TimingService.prototype.crawl = function crawl() {
-            var _this = this;
+            var _this2 = this;
 
             this.crawling = true;
             this.stepTimerHandle = setInterval(function () {
-                _this.snakeService.step();
-                _this.screenService.fadeArena();
-                _this.screenService.drawSnake(_this.snakeService.snake.segments);
+                _this2.snakeService.step();
+                _this2.screenService.fadeArena();
+                _this2.screenService.drawSnake(_this2.snakeService.snake.segments);
             }, this.stepInterval);
         };
 
         TimingService.prototype.fall = function fall() {
-            var _this2 = this;
+            var _this3 = this;
 
             this.fallTimerHandle = setInterval(function () {
-                _this2.fallNdraw();
+                _this3.fallNdraw();
             }, 0);
         };
 
@@ -873,24 +877,24 @@ define('services/timing-service',['exports', 'aurelia-framework', 'aurelia-event
         };
 
         TimingService.prototype.setSubscribers = function setSubscribers() {
-            var _this3 = this;
+            var _this4 = this;
 
             var direction = 0;
             this.ea.subscribe('keyPressed', function (response) {
                 switch (response) {
                     case 'Enter':
-                        _this3.ea.publish('start');
+                        _this4.ea.publish('start');
                         break;
                     case ' ':
-                        _this3.ea.publish('pause');
+                        _this4.ea.publish('pause');
                         break;
                 }
             });
             this.ea.subscribe('start', function (response) {
-                _this3.restart();
+                _this4.restart();
             });
             this.ea.subscribe('pause', function (response) {
-                _this3.pauseGame();
+                _this4.pauseGame();
             });
         };
 
