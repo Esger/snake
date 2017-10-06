@@ -53,19 +53,19 @@ export class ScreenService {
         ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
     }
 
-    setDomVars($arena, canvas, snakeImages, snackImages) {
-        this.ctx = canvas.getContext('2d');
-        this.canvas = canvas;
-        this.canvas.width = canvas.clientWidth;
-        this.canvas.height = canvas.clientHeight;
+    setDomVars($arena, snakeImages, snackImages) {
+        this.canvas = $('#arena')[0];
+        this.ctx = this.canvas.getContext('2d');
+        this.canvas.width = this.canvas.clientWidth;
+        this.canvas.height = this.canvas.clientHeight;
         this.wallSize = parseInt($arena.css('borderWidth'), 10);
         this.canvasCenter = {
             x: parseInt($arena.width() / 2, 10),
             y: parseInt($arena.height() / 2, 10)
         };
         this.limits = {
-            right: canvas.width - this.wallSize,
-            bottom: canvas.height - this.wallSize,
+            right: this.canvas.width - this.wallSize,
+            bottom: this.canvas.height - this.wallSize,
             left: this.wallSize,
             top: this.wallSize
         };

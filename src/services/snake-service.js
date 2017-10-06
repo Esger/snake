@@ -8,36 +8,36 @@ export class SnakeService {
     constructor(eventAggregator, screenService) {
         this.ea = eventAggregator;
         this.screenService = screenService;
+        this.snakeParts = [
+            'head',
+            'body',
+            'tail'
+        ];
         this.snake = {
-            segments: [],
             directions: [
                 [1, 0],
                 [0, 1],
                 [-1, 0],
                 [0, -1],
                 [0, 0]
-            ],
-            steps: 0,
-            turnSteps: 0,
-            deadSegments: 0
+            ]
         }
         this.setSubscribers();
     }
 
-    segment(direction, speedFactor, index, x, y) {
+    segment(direction, index, x, y) {
         return {
             direction: direction,
             index: index,
             position: [x, y],
-            speedFactor: speedFactor,
             type: 2 // 'tail'
         }
     }
 
     allDown() {
+        this.snake.stepSize = 1;
         this.snake.segments.forEach((segment) => {
             segment.direction = 1;
-            segment.speedFactor = 1;
         });
     }
 
@@ -52,6 +52,36 @@ export class SnakeService {
         // call the function named with value of snack
         // (snack !== '') && this[snack]();
         // (this.hitSnake() || this.hitWall()) && this.die();
+    }
+
+    advanceSegment(i, accellerate) {
+        let segment = this.snake.segments[i];
+        // when falling accellerate = true
+        (accellerate) && (this.snake.stepSize *= this.accelleration);
+        segment.position[0] += parseInt(this.snake.directions[segment.direction][0] * this.snake.stepSize, 10);
+        segment.position[1] += parseInt(this.snake.directions[segment.direction][1] * this.snake.stepSize, 10);
+    }
+
+    followSegment(i, j) {
+        let segment = this.snake.segments[i];
+        let preceder = this.snake.segments[j];
+        let dx = Math.abs(preceder.position[0] - segment.position[0]);
+        let dy = Math.abs(preceder.position[1] - segment.position[1]);
+        let axis = (segment.direction % 2 == 0) ? 'x' : 'y';
+        if (preceder.direction !== segment.direction) {
+            if (axis == 'x') {
+                if (dx < this.snake.segmentSize && dy > this.snake.segmentSize) {
+                    segment.direction = preceder.direction;
+                    segment.position[0] = preceder.position[0];
+                }
+            } else {
+                if (dy < this.snake.segmentSize && dx > this.snake.segmentSize) {
+                    segment.direction = preceder.direction;
+                    segment.position[1] = preceder.position[1];
+                }
+            }
+        }
+        this.advanceSegment(i);
     }
 
     fallNdraw() {
@@ -180,29 +210,16 @@ export class SnakeService {
             this.stepInterval -= 1;
             this.restartIntervals();
             this.ea.publish('speedChange', 1);
-        } else {
-            this.snake.segments.forEach((segment) => {
-                segment.speedFactor += 1;
-            });
-            this.stepInterval = 7;
-            this.ea.publish('speedChange', 7);
         }
         this.ea.publish('snack', 'Rabbit: running faster');
     }
 
     slowdown() {
         console.log('slowdown');
-        if (this.snake.segments[0].speedFactor > 1) {
-            this.snake.segments.forEach((segment) => {
-                segment.speedFactor -= 1;
-            });
-            this.ea.publish('speedChange', -7);
-        } else {
-            if (this.stepInterval < 7) {
-                this.stepInterval += 1;
-                this.restartIntervals();
-                this.ea.publish('speedChange', -1);
-            }
+        if (this.stepInterval < 7) {
+            this.stepInterval += 1;
+            this.restartIntervals();
+            this.ea.publish('speedChange', -1);
         }
         this.ea.publish('snack', 'Snail: running slower');
     }
@@ -211,11 +228,10 @@ export class SnakeService {
         let lastSegment = this.snake.segments.length;
         let tail = this.snake.segments[lastSegment - 1];
         let dir = tail.direction;
-        let factor = tail.speedFactor;
         let x = tail.position[0] - this.snake.directions[dir][0] * this.snake.segmentSize;
         let y = tail.position[1] - this.snake.directions[dir][1] * this.snake.segmentSize;
         (lastSegment > 1) && (tail.type = 1); // body
-        this.snake.segments.push(this.segment(dir, factor, lastSegment, x, y));
+        this.snake.segments.push(this.segment(dir, lastSegment, x, y));
         this.ea.publish('grow', this.snake.segments.length);
     }
 
@@ -239,41 +255,11 @@ export class SnakeService {
         this.ea.publish('gameOver');
     }
 
-    advanceSegment(i, accellerate) {
-        let segment = this.snake.segments[i];
-        // when falling accellerate = true
-        (accellerate) && (segment.speedFactor *= this.accelleration);
-        segment.position[0] += parseInt(this.snake.directions[segment.direction][0] * segment.speedFactor, 10);
-        segment.position[1] += parseInt(this.snake.directions[segment.direction][1] * segment.speedFactor, 10);
-    }
-
-    followSegment(i, j) {
-        let segment = this.snake.segments[i];
-        let preceder = this.snake.segments[j];
-        let dx = Math.abs(preceder.position[0] - segment.position[0]);
-        let dy = Math.abs(preceder.position[1] - segment.position[1]);
-        let axis = (segment.direction % 2 == 0) ? 'x' : 'y';
-        if (preceder.direction !== segment.direction) {
-            if (axis == 'x') {
-                if (dx < this.snake.segmentSize && dy > this.snake.segmentSize) {
-                    segment.direction = preceder.direction;
-                    segment.position[0] = preceder.position[0];
-                }
-            } else {
-                if (dy < this.snake.segmentSize && dx > this.snake.segmentSize) {
-                    segment.direction = preceder.direction;
-                    segment.position[1] = preceder.position[1];
-                }
-            }
-        }
-        this.advanceSegment(i);
-    }
-
     setSubscribers() {
         let direction = 0;
         this.ea.subscribe('keyPressed', response => {
             if (response.startsWith('Arrow') && this.snake.turnSteps == 0) {
-                this.snake.turnSteps = 17;
+                this.snake.turnSteps = 5;
                 switch (response) {
                     case 'ArrowRight': direction = 0;
                         break;
@@ -301,11 +287,11 @@ export class SnakeService {
         this.snake.segments = [];
         this.snake.deadSegments = 0;
         this.snake.steps = 0;
-        this.snake.turnSteps = 0;
-        this.snake.segments.push(this.segment(0, 1, 0, this.center.x, this.center.y));
+        this.snake.stepSize = 4;
+        this.snake.segments.push(this.segment(0, 0, this.center.x, this.center.y));
         this.snake.segments[0].index = 0;
         this.snake.segments[0].type = 0; // head
-        this.score = 0;
+        this.snake.turnSteps = 0;
     }
 
 

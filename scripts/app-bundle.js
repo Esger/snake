@@ -81,7 +81,7 @@ define('main',['exports', './environment'], function (exports, _environment) {
     });
   }
 });
-define('components/game-screen',['exports', 'aurelia-framework', 'aurelia-event-aggregator', '../services/screen-service', '../services/snake-service'], function (exports, _aureliaFramework, _aureliaEventAggregator, _screenService, _snakeService) {
+define('components/game-screen',['exports', 'aurelia-framework', 'aurelia-event-aggregator', '../services/screen-service', '../services/snake-service', '../services/snack-service'], function (exports, _aureliaFramework, _aureliaEventAggregator, _screenService, _snakeService, _snackService) {
     'use strict';
 
     Object.defineProperty(exports, "__esModule", {
@@ -97,18 +97,19 @@ define('components/game-screen',['exports', 'aurelia-framework', 'aurelia-event-
 
     var _dec, _class;
 
-    var GameScreenCustomElement = exports.GameScreenCustomElement = (_dec = (0, _aureliaFramework.inject)(_aureliaEventAggregator.EventAggregator, _screenService.ScreenService, _snakeService.SnakeService), _dec(_class = function () {
-        function GameScreenCustomElement(eventAggregator, screenService, snakeService) {
+    var GameScreenCustomElement = exports.GameScreenCustomElement = (_dec = (0, _aureliaFramework.inject)(_aureliaEventAggregator.EventAggregator, _screenService.ScreenService, _snakeService.SnakeService, _snackService.SnackService), _dec(_class = function () {
+        function GameScreenCustomElement(eventAggregator, screenService, snakeService, snackService) {
             _classCallCheck(this, GameScreenCustomElement);
 
             this.ea = eventAggregator;
             this.screenService = screenService;
             this.snakeService = snakeService;
+            this.snackService = snackService;
             this.snakeImages = [];
             this.snackImages = [];
 
-            this.snakeParts = ['head', 'body', 'tail'];
-            this.snacks = ['axe', 'beer', 'bunny', 'diamond', 'gold', 'ruby', 'skull', 'snail', 'trash', 'viagra'];
+            this.snakeParts = this.snakeService.snakeParts;
+            this.snacks = this.snackService.snacks;
         }
 
         GameScreenCustomElement.prototype.attached = function attached() {
@@ -116,7 +117,6 @@ define('components/game-screen',['exports', 'aurelia-framework', 'aurelia-event-
 
             var self = this;
             this.$arena = $('.arena');
-            this.canvas = document.getElementById('arena');
             $('.snakeImages img').each(function () {
                 self.snakeImages.push(this);
             });
@@ -124,7 +124,7 @@ define('components/game-screen',['exports', 'aurelia-framework', 'aurelia-event-
                 self.snackImages.push(this);
             });
             $(function () {
-                _this.screenService.setDomVars(_this.$arena, _this.canvas, _this.snakeImages, _this.snackImages);
+                _this.screenService.setDomVars(_this.$arena, _this.snakeImages, _this.snackImages);
                 _this.snakeService.setCenter();
             });
         };
@@ -360,19 +360,19 @@ define('services/screen-service',['exports', 'aurelia-framework', 'aurelia-event
             ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
         };
 
-        ScreenService.prototype.setDomVars = function setDomVars($arena, canvas, snakeImages, snackImages) {
-            this.ctx = canvas.getContext('2d');
-            this.canvas = canvas;
-            this.canvas.width = canvas.clientWidth;
-            this.canvas.height = canvas.clientHeight;
+        ScreenService.prototype.setDomVars = function setDomVars($arena, snakeImages, snackImages) {
+            this.canvas = $('#arena')[0];
+            this.ctx = this.canvas.getContext('2d');
+            this.canvas.width = this.canvas.clientWidth;
+            this.canvas.height = this.canvas.clientHeight;
             this.wallSize = parseInt($arena.css('borderWidth'), 10);
             this.canvasCenter = {
                 x: parseInt($arena.width() / 2, 10),
                 y: parseInt($arena.height() / 2, 10)
             };
             this.limits = {
-                right: canvas.width - this.wallSize,
-                bottom: canvas.height - this.wallSize,
+                right: this.canvas.width - this.wallSize,
+                bottom: this.canvas.height - this.wallSize,
                 left: this.wallSize,
                 top: this.wallSize
             };
@@ -404,24 +404,7 @@ define('services/snack-service',['exports', 'aurelia-framework', 'aurelia-event-
             _classCallCheck(this, SnackService);
 
             this.ea = eventAggregator;
-            this.snacks = {
-                images: [],
-                onBoard: [],
-                methods: {
-                    'axe': 'cutSnake',
-                    'beer': 'growSlower',
-                    'bunny': 'speedup',
-                    'diamond': 'score100',
-                    'gold': 'score10',
-                    'ruby': 'scoreX10',
-                    'skull': 'die',
-                    'snail': 'slowdown',
-                    'trash': 'trashSnacks',
-                    'viagra': 'growHarder'
-                }
-            };
-
-            this.setSubscribers();
+            this.snacks = ['axe', 'beer', 'bunny', 'diamond', 'gold', 'ruby', 'skull', 'snail', 'trash', 'viagra'];
         }
 
         SnackService.prototype.newSnack = function newSnack(x, y, name, i) {
@@ -471,29 +454,25 @@ define('services/snake-service',['exports', 'aurelia-framework', 'aurelia-event-
 
             this.ea = eventAggregator;
             this.screenService = screenService;
+            this.snakeParts = ['head', 'body', 'tail'];
             this.snake = {
-                segments: [],
-                directions: [[1, 0], [0, 1], [-1, 0], [0, -1], [0, 0]],
-                steps: 0,
-                turnSteps: 0,
-                deadSegments: 0
+                directions: [[1, 0], [0, 1], [-1, 0], [0, -1], [0, 0]]
             };
             this.setSubscribers();
         }
 
-        SnakeService.prototype.segment = function segment(direction, speedFactor, index, x, y) {
+        SnakeService.prototype.segment = function segment(direction, index, x, y) {
             return {
                 direction: direction,
                 index: index,
                 position: [x, y],
-                speedFactor: speedFactor,
                 type: 2 };
         };
 
         SnakeService.prototype.allDown = function allDown() {
+            this.snake.stepSize = 1;
             this.snake.segments.forEach(function (segment) {
                 segment.direction = 1;
-                segment.speedFactor = 1;
             });
         };
 
@@ -506,6 +485,36 @@ define('services/snake-service',['exports', 'aurelia-framework', 'aurelia-event-
             this.snake.segments.forEach(function (segment, i) {
                 i == 0 ? _this.advanceSegment(i) : _this.followSegment(i, i - 1);
             });
+        };
+
+        SnakeService.prototype.advanceSegment = function advanceSegment(i, accellerate) {
+            var segment = this.snake.segments[i];
+
+            accellerate && (this.snake.stepSize *= this.accelleration);
+            segment.position[0] += parseInt(this.snake.directions[segment.direction][0] * this.snake.stepSize, 10);
+            segment.position[1] += parseInt(this.snake.directions[segment.direction][1] * this.snake.stepSize, 10);
+        };
+
+        SnakeService.prototype.followSegment = function followSegment(i, j) {
+            var segment = this.snake.segments[i];
+            var preceder = this.snake.segments[j];
+            var dx = Math.abs(preceder.position[0] - segment.position[0]);
+            var dy = Math.abs(preceder.position[1] - segment.position[1]);
+            var axis = segment.direction % 2 == 0 ? 'x' : 'y';
+            if (preceder.direction !== segment.direction) {
+                if (axis == 'x') {
+                    if (dx < this.snake.segmentSize && dy > this.snake.segmentSize) {
+                        segment.direction = preceder.direction;
+                        segment.position[0] = preceder.position[0];
+                    }
+                } else {
+                    if (dy < this.snake.segmentSize && dx > this.snake.segmentSize) {
+                        segment.direction = preceder.direction;
+                        segment.position[1] = preceder.position[1];
+                    }
+                }
+            }
+            this.advanceSegment(i);
         };
 
         SnakeService.prototype.fallNdraw = function fallNdraw() {
@@ -641,29 +650,16 @@ define('services/snake-service',['exports', 'aurelia-framework', 'aurelia-event-
                 this.stepInterval -= 1;
                 this.restartIntervals();
                 this.ea.publish('speedChange', 1);
-            } else {
-                this.snake.segments.forEach(function (segment) {
-                    segment.speedFactor += 1;
-                });
-                this.stepInterval = 7;
-                this.ea.publish('speedChange', 7);
             }
             this.ea.publish('snack', 'Rabbit: running faster');
         };
 
         SnakeService.prototype.slowdown = function slowdown() {
             console.log('slowdown');
-            if (this.snake.segments[0].speedFactor > 1) {
-                this.snake.segments.forEach(function (segment) {
-                    segment.speedFactor -= 1;
-                });
-                this.ea.publish('speedChange', -7);
-            } else {
-                if (this.stepInterval < 7) {
-                    this.stepInterval += 1;
-                    this.restartIntervals();
-                    this.ea.publish('speedChange', -1);
-                }
+            if (this.stepInterval < 7) {
+                this.stepInterval += 1;
+                this.restartIntervals();
+                this.ea.publish('speedChange', -1);
             }
             this.ea.publish('snack', 'Snail: running slower');
         };
@@ -672,11 +668,10 @@ define('services/snake-service',['exports', 'aurelia-framework', 'aurelia-event-
             var lastSegment = this.snake.segments.length;
             var tail = this.snake.segments[lastSegment - 1];
             var dir = tail.direction;
-            var factor = tail.speedFactor;
             var x = tail.position[0] - this.snake.directions[dir][0] * this.snake.segmentSize;
             var y = tail.position[1] - this.snake.directions[dir][1] * this.snake.segmentSize;
             lastSegment > 1 && (tail.type = 1);
-            this.snake.segments.push(this.segment(dir, factor, lastSegment, x, y));
+            this.snake.segments.push(this.segment(dir, lastSegment, x, y));
             this.ea.publish('grow', this.snake.segments.length);
         };
 
@@ -700,43 +695,13 @@ define('services/snake-service',['exports', 'aurelia-framework', 'aurelia-event-
             this.ea.publish('gameOver');
         };
 
-        SnakeService.prototype.advanceSegment = function advanceSegment(i, accellerate) {
-            var segment = this.snake.segments[i];
-
-            accellerate && (segment.speedFactor *= this.accelleration);
-            segment.position[0] += parseInt(this.snake.directions[segment.direction][0] * segment.speedFactor, 10);
-            segment.position[1] += parseInt(this.snake.directions[segment.direction][1] * segment.speedFactor, 10);
-        };
-
-        SnakeService.prototype.followSegment = function followSegment(i, j) {
-            var segment = this.snake.segments[i];
-            var preceder = this.snake.segments[j];
-            var dx = Math.abs(preceder.position[0] - segment.position[0]);
-            var dy = Math.abs(preceder.position[1] - segment.position[1]);
-            var axis = segment.direction % 2 == 0 ? 'x' : 'y';
-            if (preceder.direction !== segment.direction) {
-                if (axis == 'x') {
-                    if (dx < this.snake.segmentSize && dy > this.snake.segmentSize) {
-                        segment.direction = preceder.direction;
-                        segment.position[0] = preceder.position[0];
-                    }
-                } else {
-                    if (dy < this.snake.segmentSize && dx > this.snake.segmentSize) {
-                        segment.direction = preceder.direction;
-                        segment.position[1] = preceder.position[1];
-                    }
-                }
-            }
-            this.advanceSegment(i);
-        };
-
         SnakeService.prototype.setSubscribers = function setSubscribers() {
             var _this6 = this;
 
             var direction = 0;
             this.ea.subscribe('keyPressed', function (response) {
                 if (response.startsWith('Arrow') && _this6.snake.turnSteps == 0) {
-                    _this6.snake.turnSteps = 17;
+                    _this6.snake.turnSteps = 5;
                     switch (response) {
                         case 'ArrowRight':
                             direction = 0;
@@ -768,11 +733,11 @@ define('services/snake-service',['exports', 'aurelia-framework', 'aurelia-event-
             this.snake.segments = [];
             this.snake.deadSegments = 0;
             this.snake.steps = 0;
-            this.snake.turnSteps = 0;
-            this.snake.segments.push(this.segment(0, 1, 0, this.center.x, this.center.y));
+            this.snake.stepSize = 4;
+            this.snake.segments.push(this.segment(0, 0, this.center.x, this.center.y));
             this.snake.segments[0].index = 0;
             this.snake.segments[0].type = 0;
-            this.score = 0;
+            this.snake.turnSteps = 0;
         };
 
         return SnakeService;
@@ -814,25 +779,29 @@ define('services/timing-service',['exports', 'aurelia-framework', 'aurelia-event
         }
 
         TimingService.prototype.startGame = function startGame() {
-            var _this = this;
-
             this.resetIntervals();
             this.snakeService.initSnake();
             this.crawl();
-            this.growTimerHandle = setInterval(function () {
-                _this.snakeService.grow();
-            }, this.growInterval);
+            this.grow();
         };
 
         TimingService.prototype.crawl = function crawl() {
-            var _this2 = this;
+            var _this = this;
 
             this.crawling = true;
             this.stepTimerHandle = setInterval(function () {
-                _this2.snakeService.step();
-                _this2.screenService.fadeArena();
-                _this2.screenService.drawSnake(_this2.snakeService.snake.segments);
+                _this.snakeService.step();
+                _this.screenService.fadeArena();
+                _this.screenService.drawSnake(_this.snakeService.snake.segments);
             }, this.stepInterval);
+        };
+
+        TimingService.prototype.grow = function grow() {
+            var _this2 = this;
+
+            this.growTimerHandle = setInterval(function () {
+                _this2.snakeService.grow();
+            }, this.growInterval);
         };
 
         TimingService.prototype.fall = function fall() {
@@ -899,7 +868,7 @@ define('services/timing-service',['exports', 'aurelia-framework', 'aurelia-event
         };
 
         TimingService.prototype.resetIntervals = function resetIntervals() {
-            this.stepInterval = 10;
+            this.stepInterval = 40;
             this.scoreInterval = 1000;
             this.growInterval = 3000;
             this.speedupInterval = 10000;

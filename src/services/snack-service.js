@@ -10,24 +10,35 @@ import {
 export class SnackService {
     constructor(eventAggregator) {
         this.ea = eventAggregator;
-        this.snacks = {
-            images: [],
-            onBoard: [],
-            methods: {
-                'axe': 'cutSnake',
-                'beer': 'growSlower',
-                'bunny': 'speedup',
-                'diamond': 'score100',
-                'gold': 'score10',
-                'ruby': 'scoreX10',
-                'skull': 'die',
-                'snail': 'slowdown',
-                'trash': 'trashSnacks',
-                'viagra': 'growHarder'
-            }
-        }
-
-        this.setSubscribers();
+        this.snacks = [
+            'axe',
+            'beer',
+            'bunny',
+            'diamond',
+            'gold',
+            'ruby',
+            'skull',
+            'snail',
+            'trash',
+            'viagra'
+        ]
+        // this.snacks = {
+        //     images: [],
+        //     onBoard: [],
+        //     methods: {
+        //         'axe': 'cutSnake',
+        //         'beer': 'growSlower',
+        //         'bunny': 'speedup',
+        //         'diamond': 'score100',
+        //         'gold': 'score10',
+        //         'ruby': 'scoreX10',
+        //         'skull': 'die',
+        //         'snail': 'slowdown',
+        //         'trash': 'trashSnacks',
+        //         'viagra': 'growHarder'
+        //         //'weed': 'mixSnacks'
+        //     }
+        // }
     }
 
     newSnack(x, y, name, i) {

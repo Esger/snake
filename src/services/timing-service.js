@@ -26,9 +26,7 @@ export class TimingService {
         this.resetIntervals();
         this.snakeService.initSnake();
         this.crawl();
-        this.growTimerHandle = setInterval(() => {
-            this.snakeService.grow();
-        }, this.growInterval);
+        this.grow();
         // this.speedupTimerHandle = setInterval(() => {
         //     this.speedup();
         // }, this.speedupInterval);
@@ -47,6 +45,12 @@ export class TimingService {
             this.screenService.fadeArena();
             this.screenService.drawSnake(this.snakeService.snake.segments);
         }, this.stepInterval);
+    }
+
+    grow() {
+        this.growTimerHandle = setInterval(() => {
+            this.snakeService.grow();
+        }, this.growInterval);
     }
 
     fall() {
@@ -107,7 +111,7 @@ export class TimingService {
     }
 
     resetIntervals() {
-        this.stepInterval = 10;
+        this.stepInterval = 40;
         this.scoreInterval = 1000;
         this.growInterval = 3000;
         this.speedupInterval = 10000;

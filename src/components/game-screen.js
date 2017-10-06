@@ -5,43 +5,29 @@ import {
 import {
     EventAggregator
 } from 'aurelia-event-aggregator';
-import { ScreenService } from '../services/screen-service'
-import { SnakeService } from '../services/snake-service'
+import { ScreenService } from '../services/screen-service';
+import { SnakeService } from '../services/snake-service';
+import { SnackService } from '../services/snack-service';
 
-@inject(EventAggregator, ScreenService, SnakeService)
+@inject(EventAggregator, ScreenService, SnakeService, SnackService)
 
 export class GameScreenCustomElement {
 
-    constructor(eventAggregator, screenService, snakeService) {
+    constructor(eventAggregator, screenService, snakeService, snackService) {
         this.ea = eventAggregator;
         this.screenService = screenService;
         this.snakeService = snakeService;
+        this.snackService = snackService;
         this.snakeImages = [];
         this.snackImages = [];
         // images with these names.jpg should exist in /images/..
-        this.snakeParts = [
-            'head',
-            'body',
-            'tail'
-        ];
-        this.snacks = [
-            'axe',
-            'beer',
-            'bunny',
-            'diamond',
-            'gold',
-            'ruby',
-            'skull',
-            'snail',
-            'trash',
-            'viagra'
-        ]
+        this.snakeParts = this.snakeService.snakeParts;
+        this.snacks = this.snackService.snacks;
     }
 
     attached() {
         let self = this;
         this.$arena = $('.arena');
-        this.canvas = document.getElementById('arena');
         $('.snakeImages img').each(function () {
             self.snakeImages.push(this);
         });
@@ -49,7 +35,7 @@ export class GameScreenCustomElement {
             self.snackImages.push(this);
         });
         $(() => {
-            this.screenService.setDomVars(this.$arena, this.canvas, this.snakeImages, this.snackImages)
+            this.screenService.setDomVars(this.$arena, this.snakeImages, this.snackImages);
             this.snakeService.setCenter();
         });
     }
