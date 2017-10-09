@@ -18,14 +18,17 @@ export class ScreenService {
         this.canvasCenter = {};
     }
 
-    drawSnake(segments) {
-        segments.forEach((segment) => {
+    drawSnake(snake) {
+        let type = 0;
+        for (var i = 0; i < snake.segments.length; i++) {
+            let segment = snake.segments[i];
             this.ctx.save();
             this.ctx.translate(segment.position[0], segment.position[1]);
-            (segment.type !== 1) && this.ctx.rotate(segment.direction * Math.PI / 2);
-            this.ctx.drawImage(this.snakeImages[segment.type], -this.halfSprite, -this.halfSprite);
+            (segment.type !== 1) && this.ctx.rotate(snake.direction * Math.PI / 2);
+            this.ctx.drawImage(this.snakeImages[type], -this.halfSprite, -this.halfSprite);
             this.ctx.restore();
-        });
+            type = 1;
+        }
     }
 
     drawSnack(snack) {
@@ -46,7 +49,7 @@ export class ScreenService {
     }
 
     fadeArena() {
-        this.ctx.fillStyle = 'rgba(0,0,0,.1)';
+        this.ctx.fillStyle = 'rgba(0,0,0,0.4)';
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
     }
 
