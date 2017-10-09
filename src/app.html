@@ -1,19 +1,11 @@
 <template>
     <require from="reset.css"></require>
     <require from="app.css"></require>
+    <require from="components/game-screen"></require>
     <require from="components/restart-overlay"></require>
     <require from="components/status"></require>
     <h1 class="gameTitle">${message}</h1>
-    <canvas id="arena"
-            class="arena"></canvas>
-    <div class="snakeImages">
-        <img class="head"
-             src="/images/head.png">
-        <img class="body"
-             src="/images/body.png">
-        <img class="tail"
-             src="/images/tail.png">
-    </div>
+    <game-screen></game-screen>
     <restart-overlay></restart-overlay>
     <status></status>
 </template>

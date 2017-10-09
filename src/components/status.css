@@ -11,3 +11,7 @@ status {
     color      : wheat;
     margin-left: 24px;
 }
+
+.length, .score, .snack, .speed {
+    margin-right: 10px;
+}

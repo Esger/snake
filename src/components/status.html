@@ -1,4 +1,10 @@
 <template>
     <require from="components/status.css"></require>
-    <h2 class="statusLine">Speed: ${speed}&emsp;Length: ${length}</h2>
+    <h2 class="statusLine">
+        <span>Speed:</span><span class="speed">${speed}</span>
+        <span>Length:</span><span class="length">${length}</span>
+        <span>Score:</span><span class="score">${score}</span>
+        <span class="snack"
+              innerhtml.bind="snack"></span>
+    </h2>
 </template>
