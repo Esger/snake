@@ -12,13 +12,13 @@ export class StatusCustomElement {
     constructor(eventAggregator) {
         this.ea = eventAggregator;
         this.speed = 0;
-        this.length = 2;
+        this.length = 1;
         this.score = 0;
         this.snack = '';
     }
 
     addEventListeners() {
-        this.ea.subscribe('speedChange', response => {
+        this.ea.subscribe('speed', response => {
             this.speed = response;
         });
         this.ea.subscribe('grow', response => {

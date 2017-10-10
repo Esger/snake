@@ -13,7 +13,7 @@ export class TimingService {
 
         this.crawling = false;
         this.steps = 0;
-        this.stepSize = 1;
+        this.speed = 1;
         this.fallTimerHandle = null;
         this.stepTimerHandle = null;
         this.pause = false;
@@ -36,20 +36,21 @@ export class TimingService {
 
     drawScreen() {
         this.steps += 1;
-        this.snakeService.step();
+        let grow = (this.steps % this.growInterval == 0);
+        this.snakeService.step(grow);
         this.screenService.fadeArena();
         this.screenService.drawSnake(this.snakeService.snake);
-        (this.steps % this.growInterval == 0) && (this.snakeService.grow());
         (this.steps % this.speedupInterval == 0) && (this.speedUp());
+        grow && this.ea.publish('grow', this.snakeService.snake.segments.length);
     }
 
     speedUp() {
-        if (this.stepSize <= 16) {
-            this.stepSize = this.snakeService.doubleSpeed();
+        if (this.stepInterval > 10) {
+            this.speed += 1;
             this.clearTimedEvents();
-            this.stepInterval += 20;
+            this.stepInterval -= 40;
             this.resumeGame();
-            this.ea.publish('speedChange', this.stepSize);
+            this.ea.publish('speed', this.speed);
         }
     }
 
@@ -61,8 +62,6 @@ export class TimingService {
 
     clearTimedEvents() {
         clearInterval(this.stepTimerHandle);
-        clearInterval(this.growTimerHandle);
-        clearInterval(this.speedupTimerHandle);
         // clearInterval(this.fallTimerHandle);
         // clearInterval(this.snackTimerHandle);
         // clearInterval(this.scoreTimerHandle);
@@ -105,12 +104,12 @@ export class TimingService {
     }
 
     resetIntervals() {
-        this.stepInterval = 20;
+        this.stepInterval = 400;
         this.scoreInterval = 10;
-        this.growInterval = 30;
+        this.growInterval = 10;
         this.speedupInterval = 100;
         // this.snackInterval = 2500;
-        this.speed = 0;
+        this.speed = 1;
     }
 
 }
