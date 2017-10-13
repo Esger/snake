@@ -476,7 +476,8 @@ define('services/snake-service',['exports', 'aurelia-framework', 'aurelia-event-
             this.snake = {
                 direction: 0,
                 directions: [[1, 0], [0, 1], [-1, 0], [0, -1], [0, 0]],
-                segments: []
+                segments: [],
+                deadSegments: []
             };
             this.setSubscribers();
         }
@@ -493,6 +494,7 @@ define('services/snake-service',['exports', 'aurelia-framework', 'aurelia-event-
             head[1] += this.snake.directions[this.snake.direction][1] * this.snake.segmentSize;
             this.snake.segments.unshift(head);
             this.hitWall();
+            this.hitSnake();
         };
 
         SnakeService.prototype.hitWall = function hitWall() {
@@ -501,39 +503,36 @@ define('services/snake-service',['exports', 'aurelia-framework', 'aurelia-event-
             wallHit && this.ea.publish('die', 'You hit a wall');
         };
 
-        SnakeService.prototype.dropSnake = function dropSnake() {
-            for (var i = 0; i < this.snake.segments.length; i++) {
-                var segment = this.snake.segments[i];
-                var newY = (segment[1] + 1) * 1.05;
-                if (newY <= this.screenService.limits.bottom) {
-                    segment[1] = newY;
-                } else {
-                    this.snake.deadSegments++;
-                }
-                if (this.snake.deadSegments >= this.snake.segments.length) {
-                    this.ea.publish('gameOver');
-                }
-            }
-        };
-
         SnakeService.prototype.hitSnake = function hitSnake() {
-            var self = this;
             var head = this.snake.segments[0];
-            function overlap(segPos, headPos) {
-                var dx = Math.abs(segPos[0] - headPos[0]);
-                var dy = Math.abs(segPos[1] - headPos[1]);
-                var xOverlap = dx < self.halfSprite;
-                var yOverlap = dy < self.halfSprite;
-                return xOverlap && yOverlap;
-            }
-            for (var i = 1; i < this.snake.segments.length - 1; i++) {
+            var samePosition = function samePosition(pos1, pos2) {
+                return pos1[0] == pos2[0] && pos1[1] == pos2[1];
+            };
+            for (var i = 3; i < this.snake.segments.length - 1; i++) {
                 var segment = this.snake.segments[i];
-                if (overlap(segment.position, head.position)) {
-                    this.ea.publish('snack', 'You tried to eat yourself that&rsquo;s deadly');
+                if (samePosition(segment, head)) {
+                    this.ea.publish('die', 'You tried to bite yourself that&rsquo;s deadly');
                     return true;
                 }
             }
             return false;
+        };
+
+        SnakeService.prototype.dropSnake = function dropSnake() {
+            for (var i = 0; i < this.snake.segments.length; i++) {
+                if (this.snake.deadSegments.indexOf(i) < 0) {
+                    var segment = this.snake.segments[i];
+                    var newY = (segment[1] + 1) * 1.05;
+                    if (newY <= this.screenService.limits.bottom) {
+                        segment[1] = newY;
+                    } else {
+                        this.snake.deadSegments.push(i);
+                    }
+                }
+                if (this.snake.deadSegments.length >= this.snake.segments.length) {
+                    this.ea.publish('gameOver');
+                }
+            }
         };
 
         SnakeService.prototype.hitSnack = function hitSnack() {
@@ -681,7 +680,7 @@ define('services/snake-service',['exports', 'aurelia-framework', 'aurelia-event-
             this.halfSprite = Math.round(this.snake.segmentSize / 2);
             this.accelleration = 1.01;
             this.score = 0;
-            this.snake.deadSegments = 0;
+            this.snake.deadSegments = [];
             this.snake.stepSize = 16;
             this.snake.segments = [];
             this.snake.turnSteps = 0;
