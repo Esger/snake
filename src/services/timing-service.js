@@ -45,7 +45,7 @@ export class TimingService {
     }
 
     speedUp() {
-        if (this.stepInterval > 10) {
+        if (this.stepInterval > 40) {
             this.speed += 1;
             this.clearTimedEvents();
             this.stepInterval -= 40;
@@ -54,15 +54,17 @@ export class TimingService {
         }
     }
 
-    // fall() {
-    //     this.fallTimerHandle = setInterval(() => {
-    //         this.fallNdraw();
-    //     }, 0);
-    // }
+    dropSnake() {
+        this.fallTimerHandle = setInterval(() => {
+            this.snakeService.dropSnake();
+            this.screenService.fadeArena();
+            this.screenService.drawSnake(this.snakeService.snake);
+        }, this.dropInterval);
+    }
 
     clearTimedEvents() {
         clearInterval(this.stepTimerHandle);
-        // clearInterval(this.fallTimerHandle);
+        clearInterval(this.fallTimerHandle);
         // clearInterval(this.snackTimerHandle);
         // clearInterval(this.scoreTimerHandle);
     }
@@ -95,19 +97,28 @@ export class TimingService {
                     break;
             }
         });
+        this.ea.subscribe('die', response => {
+            this.clearTimedEvents();
+            this.dropSnake();
+        });
         this.ea.subscribe('start', response => {
             this.restart();
         });
         this.ea.subscribe('pause', response => {
             this.pauseGame();
         });
+        this.ea.subscribe('gameOver', response => {
+            this.clearTimedEvents();
+        });
+
     }
 
     resetIntervals() {
         this.stepInterval = 400;
         this.scoreInterval = 10;
         this.growInterval = 10;
-        this.speedupInterval = 100;
+        this.speedupInterval = 10;
+        this.dropInterval = 0;
         // this.snackInterval = 2500;
         this.speed = 1;
     }

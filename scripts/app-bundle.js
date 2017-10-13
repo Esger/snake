@@ -107,17 +107,28 @@ define('components/game-screen',['exports', 'aurelia-framework', 'aurelia-event-
             this.snackService = snackService;
             this.snakeImages = [];
             this.snackImages = [];
+            this.spriteSize = 16;
 
             this.snakeParts = this.snakeService.snakeParts;
             this.snacks = this.snackService.snacks;
         }
+
+        GameScreenCustomElement.prototype.roundToSpriteSize = function roundToSpriteSize(size) {
+            return Math.floor(size / this.spriteSize) * this.spriteSize;
+        };
 
         GameScreenCustomElement.prototype.attached = function attached() {
             var _this = this;
 
             var self = this;
             this.$arena = $('.arena');
-            $('.snakeImages img').each(function () {
+            var $body = $('body');
+            var $snakeImages = $('.snakeImages img');
+            var targetWidth = this.roundToSpriteSize($body.width() - 48);
+            var targetHeight = this.roundToSpriteSize($body.height() - 48);
+            this.$arena.width(targetWidth);
+            this.$arena.height(targetHeight);
+            $snakeImages.each(function () {
                 self.snakeImages.push(this);
             });
             $('.snackImages img').each(function () {
@@ -206,10 +217,7 @@ define('components/status',['exports', 'aurelia-framework', 'aurelia-event-aggre
             _classCallCheck(this, StatusCustomElement);
 
             this.ea = eventAggregator;
-            this.speed = 0;
-            this.length = 1;
-            this.score = 0;
-            this.snack = '';
+            this.resetVars();
         }
 
         StatusCustomElement.prototype.addEventListeners = function addEventListeners() {
@@ -221,9 +229,8 @@ define('components/status',['exports', 'aurelia-framework', 'aurelia-event-aggre
             this.ea.subscribe('grow', function (response) {
                 _this.length = response;
             });
-            this.ea.subscribe('restart', function (response) {
-                _this.length = 1;
-                _this.speed = 0;
+            this.ea.subscribe('start', function (response) {
+                _this.resetVars();
             });
             this.ea.subscribe('score', function (response) {
                 _this.score = response;
@@ -234,6 +241,16 @@ define('components/status',['exports', 'aurelia-framework', 'aurelia-event-aggre
                     _this.snack = '';
                 }, 15000);
             });
+            this.ea.subscribe('die', function (response) {
+                _this.snack = response;
+            });
+        };
+
+        StatusCustomElement.prototype.resetVars = function resetVars() {
+            this.speed = 0;
+            this.length = 1;
+            this.score = 0;
+            this.snack = '';
         };
 
         StatusCustomElement.prototype.attached = function attached() {
@@ -359,24 +376,23 @@ define('services/screen-service',['exports', 'aurelia-framework', 'aurelia-event
         };
 
         ScreenService.prototype.roundToSpriteSize = function roundToSpriteSize(size) {
-            return Math.floor(size / this.spriteSize) * this.spriteSize;
+            return Math.floor(size / this.spriteSize) * this.spriteSize + this.halfSprite;
         };
 
         ScreenService.prototype.setDomVars = function setDomVars($arena, snakeImages, snackImages) {
             this.canvas = $('#arena')[0];
             this.ctx = this.canvas.getContext('2d');
-            this.canvas.width = this.roundToSpriteSize(this.canvas.clientWidth);
-            this.canvas.height = this.roundToSpriteSize(this.canvas.clientHeight);
-            this.wallSize = parseInt($arena.css('borderWidth'), 10);
+            this.canvas.width = this.canvas.clientWidth;
+            this.canvas.height = this.canvas.clientHeight;
             this.canvasCenter = {
                 x: this.roundToSpriteSize($arena.width() / 2),
                 y: this.roundToSpriteSize($arena.height() / 2)
             };
             this.limits = {
-                right: this.canvas.width - this.wallSize,
-                bottom: this.canvas.height - this.wallSize,
-                left: this.wallSize,
-                top: this.wallSize
+                right: this.canvas.width,
+                bottom: this.canvas.height,
+                left: 0,
+                top: 0
             };
             this.snakeImages = snakeImages;
             this.snackImages = snackImages;
@@ -465,13 +481,6 @@ define('services/snake-service',['exports', 'aurelia-framework', 'aurelia-event-
             this.setSubscribers();
         }
 
-        SnakeService.prototype.allDown = function allDown() {
-            this.snake.stepSize = 1;
-            this.snake.segments.forEach(function (segment) {
-                segment.direction = 1;
-            });
-        };
-
         SnakeService.prototype.step = function step(grow) {
             this.snake.turnSteps > 0 && this.snake.turnSteps--;
             this.advanceHead();
@@ -483,42 +492,27 @@ define('services/snake-service',['exports', 'aurelia-framework', 'aurelia-event-
             head[0] += this.snake.directions[this.snake.direction][0] * this.snake.segmentSize;
             head[1] += this.snake.directions[this.snake.direction][1] * this.snake.segmentSize;
             this.snake.segments.unshift(head);
-        };
-
-        SnakeService.prototype.advanceSegment = function advanceSegment(i, accellerate) {
-            var segment = this.snake.segments[i];
-
-            accellerate && (this.snake.stepSize *= this.accelleration);
-            segment.position[0] += parseInt(this.snake.directions[this.snake.direction][0] * this.snake.stepSize, 10);
-            segment.position[1] += parseInt(this.snake.directions[this.snake.direction][1] * this.snake.stepSize, 10);
-        };
-
-        SnakeService.prototype.fallNdraw = function fallNdraw() {
-            var _this = this;
-
-            this.snake.segments.forEach(function (segment, i) {
-                segment.direction < 4 && _this.advanceSegment(i, true);
-                if (segment.direction < 4 && _this.hitFloor(segment)) {
-                    _this.snake.deadSegments++;
-                    segment.direction = 4;
-                }
-            });
-
-            if (this.snake.deadSegments >= this.snake.segments.length) {
-                this.gameOver();
-            }
-        };
-
-        SnakeService.prototype.hitFloor = function hitFloor(segment) {
-            return segment.position[1] + this.halfSprite > this.canvas.height;
+            this.hitWall();
         };
 
         SnakeService.prototype.hitWall = function hitWall() {
             var head = this.snake.segments[0];
-            var wallHit = head.position[0] > this.canvas.width - this.halfSprite || head.position[0] < 0 + this.halfSprite || head.position[1] > this.canvas.height - this.halfSprite || head.position[1] < 0 + this.halfSprite;
-            if (wallHit) {
-                this.ea.publish('snack', 'You hit a wall');
-                return wallHit;
+            var wallHit = head[0] >= this.screenService.limits.right - this.halfSprite || head[0] <= this.screenService.limits.left + this.halfSprite || head[1] >= this.screenService.limits.bottom - this.halfSprite || head[1] <= this.screenService.limits.top + this.halfSprite;
+            wallHit && this.ea.publish('die', 'You hit a wall');
+        };
+
+        SnakeService.prototype.dropSnake = function dropSnake() {
+            for (var i = 0; i < this.snake.segments.length; i++) {
+                var segment = this.snake.segments[i];
+                var newY = (segment[1] + 1) * 1.05;
+                if (newY <= this.screenService.limits.bottom) {
+                    segment[1] = newY;
+                } else {
+                    this.snake.deadSegments++;
+                }
+                if (this.snake.deadSegments >= this.snake.segments.length) {
+                    this.ea.publish('gameOver');
+                }
             }
         };
 
@@ -569,27 +563,27 @@ define('services/snake-service',['exports', 'aurelia-framework', 'aurelia-event-
         };
 
         SnakeService.prototype.growHarder = function growHarder() {
-            var _this2 = this;
+            var _this = this;
 
             if (this.growInterval > 500) {
                 this.growInterval -= 500;
                 this.restartIntervals();
                 setTimeout(function () {
-                    _this2.growInterval += 500;
-                    _this2.restartIntervals();
+                    _this.growInterval += 500;
+                    _this.restartIntervals();
                 }, 15000);
                 this.ea.publish('snack', 'Blue pill: growing harder for 15 seconds');
             }
         };
 
         SnakeService.prototype.growSlower = function growSlower() {
-            var _this3 = this;
+            var _this2 = this;
 
             this.growInterval += 500;
             this.restartIntervals();
             setTimeout(function () {
-                _this3.growInterval -= 500;
-                _this3.restartIntervals();
+                _this2.growInterval -= 500;
+                _this2.restartIntervals();
             }, 15000);
             this.ea.publish('snack', 'Beer: growing slower for 15 seconds');
         };
@@ -605,12 +599,12 @@ define('services/snake-service',['exports', 'aurelia-framework', 'aurelia-event-
         };
 
         SnakeService.prototype.scoreX10 = function scoreX10() {
-            var _this4 = this;
+            var _this3 = this;
 
             if (this.scoreInterval > 250) {
                 this.scoreInterval -= 250;
                 setTimeout(function () {
-                    _this4.scoreInterval += 250;
+                    _this3.scoreInterval += 250;
                 }, 15000);
                 this.ea.publish('snack', 'Ruby: scoring faster for 15 seconds');
             }
@@ -647,31 +641,30 @@ define('services/snake-service',['exports', 'aurelia-framework', 'aurelia-event-
             this.ea.publish('score', this.score);
         };
 
-        SnakeService.prototype.gameOver = function gameOver() {
-            this.ea.publish('gameOver');
-        };
-
         SnakeService.prototype.setSubscribers = function setSubscribers() {
-            var _this5 = this;
+            var _this4 = this;
 
             var direction = 0;
             this.ea.subscribe('keyPressed', function (response) {
-                switch (response) {
-                    case 'ArrowRight':
-                        direction = 0;
-                        break;
-                    case 'ArrowDown':
-                        direction = 1;
-                        break;
-                    case 'ArrowLeft':
-                        direction = 2;
-                        break;
-                    case 'ArrowUp':
-                        direction = 3;
-                        break;
-                }
+                if (response.startsWith('Arrow') && _this4.snake.turnSteps == 0) {
+                    _this4.snake.turnSteps = 1;
+                    switch (response) {
+                        case 'ArrowRight':
+                            direction = 0;
+                            break;
+                        case 'ArrowDown':
+                            direction = 1;
+                            break;
+                        case 'ArrowLeft':
+                            direction = 2;
+                            break;
+                        case 'ArrowUp':
+                            direction = 3;
+                            break;
+                    }
 
-                (direction + 2) % 4 !== _this5.snake.direction && (_this5.snake.direction = direction);
+                    (direction + 2) % 4 !== _this4.snake.direction && (_this4.snake.direction = direction);
+                }
             });
         };
 
@@ -759,7 +752,7 @@ define('services/timing-service',['exports', 'aurelia-framework', 'aurelia-event
         };
 
         TimingService.prototype.speedUp = function speedUp() {
-            if (this.stepInterval > 10) {
+            if (this.stepInterval > 40) {
                 this.speed += 1;
                 this.clearTimedEvents();
                 this.stepInterval -= 40;
@@ -768,8 +761,19 @@ define('services/timing-service',['exports', 'aurelia-framework', 'aurelia-event
             }
         };
 
+        TimingService.prototype.dropSnake = function dropSnake() {
+            var _this2 = this;
+
+            this.fallTimerHandle = setInterval(function () {
+                _this2.snakeService.dropSnake();
+                _this2.screenService.fadeArena();
+                _this2.screenService.drawSnake(_this2.snakeService.snake);
+            }, this.dropInterval);
+        };
+
         TimingService.prototype.clearTimedEvents = function clearTimedEvents() {
             clearInterval(this.stepTimerHandle);
+            clearInterval(this.fallTimerHandle);
         };
 
         TimingService.prototype.pauseGame = function pauseGame() {
@@ -791,24 +795,31 @@ define('services/timing-service',['exports', 'aurelia-framework', 'aurelia-event
         };
 
         TimingService.prototype.setSubscribers = function setSubscribers() {
-            var _this2 = this;
+            var _this3 = this;
 
             var direction = 0;
             this.ea.subscribe('keyPressed', function (response) {
                 switch (response) {
                     case 'Enter':
-                        _this2.ea.publish('start');
+                        _this3.ea.publish('start');
                         break;
                     case ' ':
-                        _this2.ea.publish('pause');
+                        _this3.ea.publish('pause');
                         break;
                 }
             });
+            this.ea.subscribe('die', function (response) {
+                _this3.clearTimedEvents();
+                _this3.dropSnake();
+            });
             this.ea.subscribe('start', function (response) {
-                _this2.restart();
+                _this3.restart();
             });
             this.ea.subscribe('pause', function (response) {
-                _this2.pauseGame();
+                _this3.pauseGame();
+            });
+            this.ea.subscribe('gameOver', function (response) {
+                _this3.clearTimedEvents();
             });
         };
 
@@ -816,7 +827,8 @@ define('services/timing-service',['exports', 'aurelia-framework', 'aurelia-event
             this.stepInterval = 400;
             this.scoreInterval = 10;
             this.growInterval = 10;
-            this.speedupInterval = 100;
+            this.speedupInterval = 10;
+            this.dropInterval = 0;
 
             this.speed = 1;
         };
@@ -834,12 +846,12 @@ define('resources/index',["exports"], function (exports) {
   function configure(config) {}
 });
 define('text!app.html', ['module'], function(module) { module.exports = "<template>\n    <require from=\"reset.css\"></require>\n    <require from=\"app.css\"></require>\n    <require from=\"components/game-screen\"></require>\n    <require from=\"components/restart-overlay\"></require>\n    <require from=\"components/status\"></require>\n    <h1 class=\"gameTitle\">${message}</h1>\n    <game-screen></game-screen>\n    <restart-overlay></restart-overlay>\n    <status></status>\n</template>"; });
-define('text!app.css', ['module'], function(module) { module.exports = "body {\n    position   : relative;\n    user-select: none;\n    overflow   : hidden;\n    font-family: 'Trebuchet MS', sans-serif;\n}\n\n.gameTitle {\n    position      : absolute;\n    z-index       : 2;\n    top           : 0;\n    width         : 100vw;\n    letter-spacing: 1px;\n    font-size     : 20px;\n    line-height   : 24px;\n    text-align    : center;\n    color         : whitesmoke;\n}\n"; });
+define('text!app.css', ['module'], function(module) { module.exports = "body {\n    position        : relative;\n    user-select     : none;\n    overflow        : hidden;\n    font-family     : 'Trebuchet MS', sans-serif;\n    background-color: crimson;\n    height          : 100vh;\n}\n\n.gameTitle {\n    position      : absolute;\n    z-index       : 2;\n    top           : 0;\n    width         : 100vw;\n    letter-spacing: 1px;\n    font-size     : 20px;\n    line-height   : 24px;\n    text-align    : center;\n    color         : whitesmoke;\n}\n"; });
 define('text!components/game-screen.html', ['module'], function(module) { module.exports = "<template>\n    <require from=\"components/game-screen.css\"></require>\n    <div class=\"snakeImages\">\n        <img repeat.for=\"image of snakeParts\"\n             class.bind=\"image\"\n             src=\"/images/${image}.png\">\n    </div>\n    <div class=\"snackImages\">\n        <img repeat.for=\"image of snacks\"\n             class.bind=\"image\"\n             src=\"/images/${image}.png\">\n    </div>\n    <canvas id=\"arena\"\n            class=\"arena\"></canvas>\n</template>"; });
 define('text!reset.css', ['module'], function(module) { module.exports = "/* http://meyerweb.com/eric/tools/css/reset/ \n   v2.0 | 20110126\n   License: none (public domain)\n*/\n\na, abbr, acronym, address, applet, article, aside, audio, b, big, blockquote, body, canvas, caption, center, cite, code, dd, del, details, dfn, div, dl, dt, em, embed, fieldset, figcaption, figure, footer, form, h1, h2, h3, h4, h5, h6, header, hgroup, html, i, iframe, img, ins, kbd, label, legend, li, mark, menu, nav, object, ol, output, p, pre, q, ruby, s, samp, section, small, span, strike, strong, sub, summary, sup, table, tbody, td, tfoot, th, thead, time, tr, tt, u, ul, var, video {\n    margin        : 0;\n    padding       : 0;\n    border        : 0;\n    font-size     : 100%;\n    font          : inherit;\n    vertical-align: baseline;\n}\n/* HTML5 display-role reset for older browsers */\narticle, aside, details, figcaption, figure, footer, header, hgroup, menu, nav, section {\n    display: block;\n}\n\nbody {\n    line-height: 1;\n}\n\nol, ul {\n    list-style: none;\n}\n\nblockquote, q {\n    quotes: none;\n}\n\nblockquote:after, blockquote:before, q:after, q:before {\n    content: '';\n    content: none;\n}\n\ntable {\n    border-collapse: collapse;\n    border-spacing : 0;\n}\n"; });
 define('text!components/restart-overlay.html', ['module'], function(module) { module.exports = "<template class=\"${showOverlay || pause ? 'show' : ''}\"\n          click.delegate=\"start()\">\n    <require from=\"components/restart-overlay.css\"></require>\n    <h2 class=\"restart ${!pause && !firstGame ? 'show' : ''}\">Game over</h2>\n    <h2 class=\"restart ${!pause ? 'show' : ''}\">Click or tap or &lt;enter&gt; to start new game</h2>\n    <h2 class=\"paused ${pause ? 'show' : ''}\">Game paused</h2>\n    <h2 class=\"paused ${pause ? 'show' : ''}\">Press space to continue</h2>\n\n</template>"; });
-define('text!components/game-screen.css', ['module'], function(module) { module.exports = ".arena {\n    position        : relative;\n    z-index         : 1;\n    width           : calc(100vw - 48px);\n    height          : calc(100vh - 48px);\n    background-color: black;\n    border          : 24px solid crimson;\n}\n\n.snackImages, .snakeImages {\n    display : none;\n    position: absolute;\n    top     : 0;\n    left    : 0;\n    z-index : 0;\n}\n"; });
+define('text!components/game-screen.css', ['module'], function(module) { module.exports = "game-Screen {\n    display        : flex;\n    flex-direction : column;\n    justify-content: center;\n    align-items    : center;\n    width          : 100vw;\n    height         : 100vh;\n    position       : relative;\n}\n\n.arena {\n    background-color: black;\n}\n\n.snackImages, .snakeImages {\n    display : none;\n    position: absolute;\n    top     : 0;\n    left    : 0;\n    z-index : 0;\n}\n"; });
 define('text!components/status.html', ['module'], function(module) { module.exports = "<template>\n    <require from=\"components/status.css\"></require>\n    <h2 class=\"statusLine\">\n        <span>Speed:</span><span class=\"speed\">${speed}</span>\n        <span>Length:</span><span class=\"length\">${length}</span>\n        <span>Score:</span><span class=\"score\">${score}</span>\n        <span class=\"snack\"\n              innerhtml.bind=\"snack\"></span>\n    </h2>\n</template>"; });
 define('text!components/restart-overlay.css', ['module'], function(module) { module.exports = "restart-overlay {\n    position        : absolute;\n    z-index         : 10;\n    top             : 0;\n    left            : 0;\n    display         : flex;\n    flex-direction  : column;\n    justify-content : space-around;\n    align-items     : center;\n    width           : 100vw;\n    height          : 100vh;\n    background-color: rgba(0,0,0,.7);\n    opacity         : 0;\n    pointer-events  : none;\n    transition      : all .2s;\n}\n\nrestart-overlay.show {\n    opacity       : 1;\n    pointer-events: all;\n}\n\nrestart-overlay h2 {\n    font-size  : 5vh;\n    line-height: 5vh;\n    color      : whitesmoke;\n}\n\n.paused, .restart {\n    display: none;\n}\n\n.paused.show, .restart.show {\n    display: block;\n}\n"; });
-define('text!components/status.css', ['module'], function(module) { module.exports = "status {\n    position: absolute;\n    z-index : 2;\n    bottom  : 0;\n    width   : 100vw;\n}\n\n.statusLine {\n    font-size  : 18px;\n    line-height: 30px;\n    color      : wheat;\n    margin-left: 24px;\n}\n\n.length, .score, .snack, .speed {\n    margin-right: 10px;\n}\n"; });
+define('text!components/status.css', ['module'], function(module) { module.exports = "status {\n    position  : absolute;\n    z-index   : 2;\n    bottom    : 0;\n    width     : 100vw;\n    text-align: center;\n}\n\n.statusLine {\n    font-size  : 18px;\n    line-height: 30px;\n    color      : wheat;\n    /* margin-left: 24px; */\n}\n\n.length, .score, .snack, .speed {\n    margin-right: 10px;\n}\n"; });
 //# sourceMappingURL=app-bundle.js.map

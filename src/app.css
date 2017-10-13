@@ -1,8 +1,10 @@
 body {
-    position   : relative;
-    user-select: none;
-    overflow   : hidden;
-    font-family: 'Trebuchet MS', sans-serif;
+    position        : relative;
+    user-select     : none;
+    overflow        : hidden;
+    font-family     : 'Trebuchet MS', sans-serif;
+    background-color: crimson;
+    height          : 100vh;
 }
 
 .gameTitle {

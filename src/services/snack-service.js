@@ -22,23 +22,6 @@ export class SnackService {
             'trash',
             'viagra'
         ]
-        // this.snacks = {
-        //     images: [],
-        //     onBoard: [],
-        //     methods: {
-        //         'axe': 'cutSnake',
-        //         'beer': 'growSlower',
-        //         'bunny': 'speedup',
-        //         'diamond': 'score100',
-        //         'gold': 'score10',
-        //         'ruby': 'scoreX10',
-        //         'skull': 'die',
-        //         'snail': 'slowdown',
-        //         'trash': 'trashSnacks',
-        //         'viagra': 'growHarder'
-        //         //'weed': 'mixSnacks'
-        //     }
-        // }
     }
 
     newSnack(x, y, name, i) {

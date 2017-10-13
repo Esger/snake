@@ -54,24 +54,23 @@ export class ScreenService {
     }
 
     roundToSpriteSize(size) {
-        return Math.floor(size / this.spriteSize) * this.spriteSize;
+        return Math.floor(size / this.spriteSize) * this.spriteSize + this.halfSprite;
     }
 
     setDomVars($arena, snakeImages, snackImages) {
         this.canvas = $('#arena')[0];
         this.ctx = this.canvas.getContext('2d');
-        this.canvas.width = this.roundToSpriteSize(this.canvas.clientWidth);
-        this.canvas.height = this.roundToSpriteSize(this.canvas.clientHeight);
-        this.wallSize = parseInt($arena.css('borderWidth'), 10);
+        this.canvas.width = this.canvas.clientWidth;
+        this.canvas.height = this.canvas.clientHeight;
         this.canvasCenter = {
             x: this.roundToSpriteSize($arena.width() / 2),
             y: this.roundToSpriteSize($arena.height() / 2)
         };
         this.limits = {
-            right: this.canvas.width - this.wallSize,
-            bottom: this.canvas.height - this.wallSize,
-            left: this.wallSize,
-            top: this.wallSize
+            right: this.canvas.width,
+            bottom: this.canvas.height,
+            left: 0,
+            top: 0
         };
         this.snakeImages = snakeImages;
         this.snackImages = snackImages;
