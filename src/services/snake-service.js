@@ -1,13 +1,15 @@
 import { inject } from 'aurelia-framework';
 import { EventAggregator } from 'aurelia-event-aggregator';
 import { ScreenService } from './screen-service'
+import { SnackService } from '../services/snack-service';
 
-@inject(EventAggregator, ScreenService)
+@inject(EventAggregator, ScreenService, SnackService)
 
 export class SnakeService {
-    constructor(eventAggregator, screenService) {
+    constructor(eventAggregator, screenService, snackService) {
         this.ea = eventAggregator;
         this.screenService = screenService;
+        this.snackService = snackService;
         this.snakeParts = [
             'head',
             'body',
@@ -25,6 +27,19 @@ export class SnakeService {
             segments: [],
             deadSegments: []
         }
+        this.snackMethods = {
+            'nope': void (0),
+            'axe': this.cutSnake(),
+            'beer': this.growSlower(),
+            'bunny': this.speedUp(),
+            // 'diamond': this.score100(),
+            // 'gold': this.score10(),
+            // 'ruby': this.scoreX10(),
+            // 'skull': this.die(),
+            // 'snail': this.slowdown(),
+            // 'trash': this.trashSnacks(),
+            // 'viagra': this.growHarder()
+        }
         this.setSubscribers();
     }
 
@@ -33,7 +48,6 @@ export class SnakeService {
         (this.snake.turnSteps > 0) && this.snake.turnSteps--;
         this.advanceHead();
         (!grow) && (this.snake.segments.pop());
-        // let snack = this.hitSnack();
         // call the function named with value of snack
         // (snack !== '') && this[snack]();
         // (this.hitSnake() || this.hitWall()) && this.die();
@@ -46,6 +60,7 @@ export class SnakeService {
         this.snake.segments.unshift(head);
         this.hitWall();
         this.hitSnake();
+        this.snackMethods[this.snackService.hitSnack(head)];
     }
 
     hitWall() {
@@ -60,17 +75,18 @@ export class SnakeService {
 
     hitSnake() {
         let head = this.snake.segments[0];
-        let samePosition = function (pos1, pos2) {
-            return pos1[0] == pos2[0] && pos1[1] == pos2[1];
-        }
         for (let i = 3; i < this.snake.segments.length - 1; i++) {
             let segment = this.snake.segments[i];
-            if (samePosition(segment, head)) {
+            if (this.samePosition(segment, head)) {
                 this.ea.publish('die', 'You tried to bite yourself that&rsquo;s deadly');
                 return true;
             }
         }
         return false;
+    }
+
+    samePosition(pos1, pos2) {
+        return pos1[0] == pos2[0] && pos1[1] == pos2[1];
     }
 
     dropSnake() {
@@ -90,52 +106,24 @@ export class SnakeService {
         }
     }
 
-    hitSnack() {
-        let self = this;
-        let head = this.snake.segments[0];
-        function overlap(snackPos, headPos) {
-            let dx = Math.abs(snackPos[0] - headPos[0]);
-            let dy = Math.abs(snackPos[1] - headPos[1]);
-            let xOverlap = dx < (self.snackSize + self.snake.segmentSize) / 2;
-            let yOverlap = dy < (self.snackSize + self.snake.segmentSize) / 2;
-            return xOverlap && yOverlap;
-        }
-        for (let i = 0; i < this.snacks.onBoard.length - 1; i++) {
-            let snack = this.snacks.onBoard[i];
-            if (overlap(snack.position, head.position)) {
-                (i > -1) && this.snacks.onBoard.splice(i, 1);
-                return this.snacks.methods[snack.name];
-            }
-        }
-        return '';
-    }
-
     cutSnake() {
         let halfSnake = Math.floor(this.snake.segments.length / 2)
         this.snake.segments.splice(-halfSnake);
         this.ea.publish('snack', 'Axe: you lost half of your length');
     }
 
-    growHarder() {
-        if (this.growInterval > 500) {
-            this.growInterval -= 500;
-            this.restartIntervals();
-            setTimeout(() => {
-                this.growInterval += 500;
-                this.restartIntervals();
-            }, 15000);
-            this.ea.publish('snack', 'Blue pill: growing harder for 15 seconds');
-        }
+    speedUp() {
+        this.ea.publish('snack', 'Bunny: running faster for 15 seconds');
     }
+
+    growHarder() {
+        this.ea.publish('snack', 'Viagra: growing harder for 15 seconds');
+    }
+
     growSlower() {
-        this.growInterval += 500;
-        this.restartIntervals();
-        setTimeout(() => {
-            this.growInterval -= 500;
-            this.restartIntervals();
-        }, 15000);
         this.ea.publish('snack', 'Beer: growing slower for 15 seconds');
     }
+
     score100() {
         this.scoreUpdate(1000);
         this.ea.publish('snack', 'Diamond: you scored 1000 points');

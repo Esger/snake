@@ -23,6 +23,7 @@ export class GameScreenCustomElement {
         this.spriteSize = 16;
         // images with these names.jpg should exist in /images/..
         this.snakeParts = this.snakeService.snakeParts;
+        this.snackNames = this.snackService.names;
         this.snacks = this.snackService.snacks;
     }
 
@@ -35,6 +36,7 @@ export class GameScreenCustomElement {
         this.$arena = $('.arena');
         let $body = $('body');
         let $snakeImages = $('.snakeImages img');
+        let $snackImages = $('.snackImages img');
         let targetWidth = this.roundToSpriteSize($body.width() - 48);
         let targetHeight = this.roundToSpriteSize($body.height() - 48);
         this.$arena.width(targetWidth);
@@ -42,7 +44,7 @@ export class GameScreenCustomElement {
         $snakeImages.each(function () {
             self.snakeImages.push(this);
         });
-        $('.snackImages img').each(function () {
+        $snackImages.each(function () {
             self.snackImages.push(this);
         });
         $(() => {

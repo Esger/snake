@@ -20,7 +20,7 @@ export class ScreenService {
 
     drawSnake(snake) {
         let type = 0;
-        for (var i = 0; i < snake.segments.length; i++) {
+        for (let i = 0; i < snake.segments.length; i++) {
             let segment = snake.segments[i];
             this.ctx.save();
             this.ctx.translate(segment[0], segment[1]);
@@ -31,21 +31,18 @@ export class ScreenService {
         }
     }
 
-    drawSnack(snack) {
-        this.ctx.save();
-        // ctx.strokeStyle = 'goldenrod';
-        // ctx.rect(snack.position[0], snack.position[1], this.snackSize, this.snackSize);
-        // ctx.stroke();
-        this.ctx.translate(snack.position[0], snack.position[1]);
-        // snacks are 2x larger
-        this.ctx.drawImage(this.snackImages[snack.index], 0, 0, this.snackSize, this.snackSize);
-        this.ctx.restore();
-    }
-
-    drawSnacks() {
-        this.snacks.onBoard.forEach((snack) => {
-            gameScreen.drawSnack(snack);
-        })
+    drawSnacks(snacks) {
+        for (let i = 0; i < snacks.length; i++) {
+            let snack = snacks[i];
+            this.ctx.save();
+            // this.ctx.strokeStyle = 'goldenrod';
+            // this.ctx.rect(snack.position[0], snack.position[1], this.snackSize, this.snackSize);
+            // this.ctx.stroke();
+            this.ctx.translate(snack.position[0] - this.halfSnackSize, snack.position[1] - this.halfSnackSize);
+            // snacks are larger
+            this.ctx.drawImage(this.snackImages[snack.nameIndex], 0, 0, this.snackSize, this.snackSize);
+            this.ctx.restore();
+        }
     }
 
     fadeArena() {

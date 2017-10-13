@@ -110,6 +110,7 @@ define('components/game-screen',['exports', 'aurelia-framework', 'aurelia-event-
             this.spriteSize = 16;
 
             this.snakeParts = this.snakeService.snakeParts;
+            this.snackNames = this.snackService.names;
             this.snacks = this.snackService.snacks;
         }
 
@@ -124,6 +125,7 @@ define('components/game-screen',['exports', 'aurelia-framework', 'aurelia-event-
             this.$arena = $('.arena');
             var $body = $('body');
             var $snakeImages = $('.snakeImages img');
+            var $snackImages = $('.snackImages img');
             var targetWidth = this.roundToSpriteSize($body.width() - 48);
             var targetHeight = this.roundToSpriteSize($body.height() - 48);
             this.$arena.width(targetWidth);
@@ -131,7 +133,7 @@ define('components/game-screen',['exports', 'aurelia-framework', 'aurelia-event-
             $snakeImages.each(function () {
                 self.snakeImages.push(this);
             });
-            $('.snackImages img').each(function () {
+            $snackImages.each(function () {
                 self.snackImages.push(this);
             });
             $(function () {
@@ -355,19 +357,16 @@ define('services/screen-service',['exports', 'aurelia-framework', 'aurelia-event
             }
         };
 
-        ScreenService.prototype.drawSnack = function drawSnack(snack) {
-            this.ctx.save();
+        ScreenService.prototype.drawSnacks = function drawSnacks(snacks) {
+            for (var i = 0; i < snacks.length; i++) {
+                var snack = snacks[i];
+                this.ctx.save();
 
-            this.ctx.translate(snack.position[0], snack.position[1]);
+                this.ctx.translate(snack.position[0] - this.halfSnackSize, snack.position[1] - this.halfSnackSize);
 
-            this.ctx.drawImage(this.snackImages[snack.index], 0, 0, this.snackSize, this.snackSize);
-            this.ctx.restore();
-        };
-
-        ScreenService.prototype.drawSnacks = function drawSnacks() {
-            this.snacks.onBoard.forEach(function (snack) {
-                gameScreen.drawSnack(snack);
-            });
+                this.ctx.drawImage(this.snackImages[snack.nameIndex], 0, 0, this.snackSize, this.snackSize);
+                this.ctx.restore();
+            }
         };
 
         ScreenService.prototype.fadeArena = function fadeArena() {
@@ -401,7 +400,7 @@ define('services/screen-service',['exports', 'aurelia-framework', 'aurelia-event
         return ScreenService;
     }()) || _class);
 });
-define('services/snack-service',['exports', 'aurelia-framework', 'aurelia-event-aggregator'], function (exports, _aureliaFramework, _aureliaEventAggregator) {
+define('services/snack-service',['exports', 'aurelia-framework', 'aurelia-event-aggregator', './screen-service'], function (exports, _aureliaFramework, _aureliaEventAggregator, _screenService) {
     'use strict';
 
     Object.defineProperty(exports, "__esModule", {
@@ -417,40 +416,60 @@ define('services/snack-service',['exports', 'aurelia-framework', 'aurelia-event-
 
     var _dec, _class;
 
-    var SnackService = exports.SnackService = (_dec = (0, _aureliaFramework.inject)(_aureliaEventAggregator.EventAggregator), _dec(_class = function () {
-        function SnackService(eventAggregator) {
+    var SnackService = exports.SnackService = (_dec = (0, _aureliaFramework.inject)(_aureliaEventAggregator.EventAggregator, _screenService.ScreenService), _dec(_class = function () {
+        function SnackService(eventAggregator, screenService) {
             _classCallCheck(this, SnackService);
 
             this.ea = eventAggregator;
-            this.snacks = ['axe', 'beer', 'bunny', 'diamond', 'gold', 'ruby', 'skull', 'snail', 'trash', 'viagra'];
+            this.screenService = screenService;
+            this.snacks = [];
+            this.names = ['axe', 'beer', 'bunny', 'diamond', 'gold', 'ruby', 'skull', 'snail', 'trash', 'viagra'];
         }
 
         SnackService.prototype.newSnack = function newSnack(x, y, name, i) {
             var snack = {
                 position: [x, y],
                 name: name,
-                index: i
+                nameIndex: i
             };
             return snack;
         };
 
-        SnackService.prototype.addSnack = function addSnack() {
-            var snack = Math.floor(Math.random() * this.snacks.images.length);
-            var name = this.snacks.images[snack].className;
+        SnackService.prototype.samePosition = function samePosition(pos1, pos2) {
+            return pos1[0] == pos2[0] && pos1[1] == pos2[1];
+        };
 
-            var x = Math.floor(Math.random() * this.canvas.width - 24) + 24;
-            var y = Math.floor(Math.random() * this.canvas.height - 24) + 24;
-            this.snacks.onBoard.push(this.newSnack(x, y, name, snack));
+        SnackService.prototype.hitSnack = function hitSnack(head) {
+            for (var i = 0; i < this.snacks.length - 1; i++) {
+                var snack = this.snacks[i];
+                if (this.samePosition(snack.position, head)) {
+                    this.removeSnack(i);
+                    return snack.name;
+                }
+            }
+            return 'nope';
+        };
+
+        SnackService.prototype.addSnack = function addSnack() {
+            var randomIndex = Math.floor(Math.random() * this.names.length);
+            var snack = this.names[randomIndex];
+            var x = this.screenService.roundToSpriteSize(Math.floor(Math.random() * (this.screenService.limits.right - this.screenService.spriteSize)));
+            var y = this.screenService.roundToSpriteSize(Math.floor(Math.random() * (this.screenService.limits.bottom - this.screenService.spriteSize)));
+            this.snacks.push(this.newSnack(x, y, snack, randomIndex));
+        };
+
+        SnackService.prototype.removeSnack = function removeSnack(index) {
+            this.snacks.splice(index, 1);
         };
 
         SnackService.prototype.initStuff = function initStuff() {
-            this.snacks.onBoard = [];
+            this.snacks = [];
         };
 
         return SnackService;
     }()) || _class);
 });
-define('services/snake-service',['exports', 'aurelia-framework', 'aurelia-event-aggregator', './screen-service'], function (exports, _aureliaFramework, _aureliaEventAggregator, _screenService) {
+define('services/snake-service',['exports', 'aurelia-framework', 'aurelia-event-aggregator', './screen-service', '../services/snack-service'], function (exports, _aureliaFramework, _aureliaEventAggregator, _screenService, _snackService) {
     'use strict';
 
     Object.defineProperty(exports, "__esModule", {
@@ -466,18 +485,25 @@ define('services/snake-service',['exports', 'aurelia-framework', 'aurelia-event-
 
     var _dec, _class;
 
-    var SnakeService = exports.SnakeService = (_dec = (0, _aureliaFramework.inject)(_aureliaEventAggregator.EventAggregator, _screenService.ScreenService), _dec(_class = function () {
-        function SnakeService(eventAggregator, screenService) {
+    var SnakeService = exports.SnakeService = (_dec = (0, _aureliaFramework.inject)(_aureliaEventAggregator.EventAggregator, _screenService.ScreenService, _snackService.SnackService), _dec(_class = function () {
+        function SnakeService(eventAggregator, screenService, snackService) {
             _classCallCheck(this, SnakeService);
 
             this.ea = eventAggregator;
             this.screenService = screenService;
+            this.snackService = snackService;
             this.snakeParts = ['head', 'body', 'tail'];
             this.snake = {
                 direction: 0,
                 directions: [[1, 0], [0, 1], [-1, 0], [0, -1], [0, 0]],
                 segments: [],
                 deadSegments: []
+            };
+            this.snackMethods = {
+                'nope': void 0,
+                'axe': this.cutSnake(),
+                'beer': this.growSlower(),
+                'bunny': this.speedUp()
             };
             this.setSubscribers();
         }
@@ -495,6 +521,7 @@ define('services/snake-service',['exports', 'aurelia-framework', 'aurelia-event-
             this.snake.segments.unshift(head);
             this.hitWall();
             this.hitSnake();
+            this.snackMethods[this.snackService.hitSnack(head)];
         };
 
         SnakeService.prototype.hitWall = function hitWall() {
@@ -505,17 +532,18 @@ define('services/snake-service',['exports', 'aurelia-framework', 'aurelia-event-
 
         SnakeService.prototype.hitSnake = function hitSnake() {
             var head = this.snake.segments[0];
-            var samePosition = function samePosition(pos1, pos2) {
-                return pos1[0] == pos2[0] && pos1[1] == pos2[1];
-            };
             for (var i = 3; i < this.snake.segments.length - 1; i++) {
                 var segment = this.snake.segments[i];
-                if (samePosition(segment, head)) {
+                if (this.samePosition(segment, head)) {
                     this.ea.publish('die', 'You tried to bite yourself that&rsquo;s deadly');
                     return true;
                 }
             }
             return false;
+        };
+
+        SnakeService.prototype.samePosition = function samePosition(pos1, pos2) {
+            return pos1[0] == pos2[0] && pos1[1] == pos2[1];
         };
 
         SnakeService.prototype.dropSnake = function dropSnake() {
@@ -535,55 +563,21 @@ define('services/snake-service',['exports', 'aurelia-framework', 'aurelia-event-
             }
         };
 
-        SnakeService.prototype.hitSnack = function hitSnack() {
-            var self = this;
-            var head = this.snake.segments[0];
-            function overlap(snackPos, headPos) {
-                var dx = Math.abs(snackPos[0] - headPos[0]);
-                var dy = Math.abs(snackPos[1] - headPos[1]);
-                var xOverlap = dx < (self.snackSize + self.snake.segmentSize) / 2;
-                var yOverlap = dy < (self.snackSize + self.snake.segmentSize) / 2;
-                return xOverlap && yOverlap;
-            }
-            for (var i = 0; i < this.snacks.onBoard.length - 1; i++) {
-                var snack = this.snacks.onBoard[i];
-                if (overlap(snack.position, head.position)) {
-                    i > -1 && this.snacks.onBoard.splice(i, 1);
-                    return this.snacks.methods[snack.name];
-                }
-            }
-            return '';
-        };
-
         SnakeService.prototype.cutSnake = function cutSnake() {
             var halfSnake = Math.floor(this.snake.segments.length / 2);
             this.snake.segments.splice(-halfSnake);
             this.ea.publish('snack', 'Axe: you lost half of your length');
         };
 
-        SnakeService.prototype.growHarder = function growHarder() {
-            var _this = this;
+        SnakeService.prototype.speedUp = function speedUp() {
+            this.ea.publish('snack', 'Bunny: running faster for 15 seconds');
+        };
 
-            if (this.growInterval > 500) {
-                this.growInterval -= 500;
-                this.restartIntervals();
-                setTimeout(function () {
-                    _this.growInterval += 500;
-                    _this.restartIntervals();
-                }, 15000);
-                this.ea.publish('snack', 'Blue pill: growing harder for 15 seconds');
-            }
+        SnakeService.prototype.growHarder = function growHarder() {
+            this.ea.publish('snack', 'Viagra: growing harder for 15 seconds');
         };
 
         SnakeService.prototype.growSlower = function growSlower() {
-            var _this2 = this;
-
-            this.growInterval += 500;
-            this.restartIntervals();
-            setTimeout(function () {
-                _this2.growInterval -= 500;
-                _this2.restartIntervals();
-            }, 15000);
             this.ea.publish('snack', 'Beer: growing slower for 15 seconds');
         };
 
@@ -598,12 +592,12 @@ define('services/snake-service',['exports', 'aurelia-framework', 'aurelia-event-
         };
 
         SnakeService.prototype.scoreX10 = function scoreX10() {
-            var _this3 = this;
+            var _this = this;
 
             if (this.scoreInterval > 250) {
                 this.scoreInterval -= 250;
                 setTimeout(function () {
-                    _this3.scoreInterval += 250;
+                    _this.scoreInterval += 250;
                 }, 15000);
                 this.ea.publish('snack', 'Ruby: scoring faster for 15 seconds');
             }
@@ -641,12 +635,12 @@ define('services/snake-service',['exports', 'aurelia-framework', 'aurelia-event-
         };
 
         SnakeService.prototype.setSubscribers = function setSubscribers() {
-            var _this4 = this;
+            var _this2 = this;
 
             var direction = 0;
             this.ea.subscribe('keyPressed', function (response) {
-                if (response.startsWith('Arrow') && _this4.snake.turnSteps == 0) {
-                    _this4.snake.turnSteps = 1;
+                if (response.startsWith('Arrow') && _this2.snake.turnSteps == 0) {
+                    _this2.snake.turnSteps = 1;
                     switch (response) {
                         case 'ArrowRight':
                             direction = 0;
@@ -662,7 +656,7 @@ define('services/snake-service',['exports', 'aurelia-framework', 'aurelia-event-
                             break;
                     }
 
-                    (direction + 2) % 4 !== _this4.snake.direction && (_this4.snake.direction = direction);
+                    (direction + 2) % 4 !== _this2.snake.direction && (_this2.snake.direction = direction);
                 }
             });
         };
@@ -691,7 +685,7 @@ define('services/snake-service',['exports', 'aurelia-framework', 'aurelia-event-
         return SnakeService;
     }()) || _class);
 });
-define('services/timing-service',['exports', 'aurelia-framework', 'aurelia-event-aggregator', './snake-service', './screen-service'], function (exports, _aureliaFramework, _aureliaEventAggregator, _snakeService, _screenService) {
+define('services/timing-service',['exports', 'aurelia-framework', 'aurelia-event-aggregator', './snake-service', './snack-service', './screen-service'], function (exports, _aureliaFramework, _aureliaEventAggregator, _snakeService, _snackService, _screenService) {
     'use strict';
 
     Object.defineProperty(exports, "__esModule", {
@@ -707,12 +701,13 @@ define('services/timing-service',['exports', 'aurelia-framework', 'aurelia-event
 
     var _dec, _class;
 
-    var TimingService = exports.TimingService = (_dec = (0, _aureliaFramework.inject)(_aureliaEventAggregator.EventAggregator, _snakeService.SnakeService, _screenService.ScreenService), _dec(_class = function () {
-        function TimingService(eventAggregator, snakeService, screenService) {
+    var TimingService = exports.TimingService = (_dec = (0, _aureliaFramework.inject)(_aureliaEventAggregator.EventAggregator, _snakeService.SnakeService, _snackService.SnackService, _screenService.ScreenService), _dec(_class = function () {
+        function TimingService(eventAggregator, snakeService, snackService, screenService) {
             _classCallCheck(this, TimingService);
 
             this.ea = eventAggregator;
             this.snakeService = snakeService;
+            this.snackService = snackService;
             this.screenService = screenService;
 
             this.crawling = false;
@@ -721,6 +716,13 @@ define('services/timing-service',['exports', 'aurelia-framework', 'aurelia-event
             this.fallTimerHandle = null;
             this.stepTimerHandle = null;
             this.pause = false;
+
+            this.baseGrowInterval = 10;
+            this.baseScoreInterval = 10;
+            this.baseSnackInterval = 10;
+            this.baseSpeedupInterval = 50;
+            this.baseStepInterval = 400;
+            this.dropInterval = 0;
 
             this.setSubscribers();
         }
@@ -743,11 +745,13 @@ define('services/timing-service',['exports', 'aurelia-framework', 'aurelia-event
         TimingService.prototype.drawScreen = function drawScreen() {
             this.steps += 1;
             var grow = this.steps % this.growInterval == 0;
+            grow && this.ea.publish('grow', this.snakeService.snake.segments.length);
+            this.steps % this.speedupInterval == 0 && this.speedUp();
+            this.steps % this.snackInterval == 0 && this.snackService.addSnack();
             this.snakeService.step(grow);
             this.screenService.fadeArena();
+            this.screenService.drawSnacks(this.snackService.snacks);
             this.screenService.drawSnake(this.snakeService.snake);
-            this.steps % this.speedupInterval == 0 && this.speedUp();
-            grow && this.ea.publish('grow', this.snakeService.snake.segments.length);
         };
 
         TimingService.prototype.speedUp = function speedUp() {
@@ -768,6 +772,26 @@ define('services/timing-service',['exports', 'aurelia-framework', 'aurelia-event
                 _this2.screenService.fadeArena();
                 _this2.screenService.drawSnake(_this2.snakeService.snake);
             }, this.dropInterval);
+        };
+
+        TimingService.prototype.growHarder = function growHarder() {
+            var _this3 = this;
+
+            if (this.growInterval > baseGrowInterval) {
+                this.growInterval -= 2;
+                setTimeout(function () {
+                    _this3.growInterval += 2;
+                }, 15000);
+            }
+        };
+
+        TimingService.prototype.growSlower = function growSlower() {
+            var _this4 = this;
+
+            this.growInterval += 2;
+            setTimeout(function () {
+                _this4.growInterval -= 2;
+            }, 15000);
         };
 
         TimingService.prototype.clearTimedEvents = function clearTimedEvents() {
@@ -794,41 +818,44 @@ define('services/timing-service',['exports', 'aurelia-framework', 'aurelia-event
         };
 
         TimingService.prototype.setSubscribers = function setSubscribers() {
-            var _this3 = this;
+            var _this5 = this;
 
             var direction = 0;
             this.ea.subscribe('keyPressed', function (response) {
                 switch (response) {
                     case 'Enter':
-                        _this3.ea.publish('start');
+                        _this5.ea.publish('start');
                         break;
                     case ' ':
-                        _this3.ea.publish('pause');
+                        _this5.ea.publish('pause');
                         break;
                 }
             });
             this.ea.subscribe('die', function (response) {
-                _this3.clearTimedEvents();
-                _this3.dropSnake();
+                _this5.clearTimedEvents();
+                _this5.dropSnake();
             });
             this.ea.subscribe('start', function (response) {
-                _this3.restart();
+                _this5.restart();
             });
             this.ea.subscribe('pause', function (response) {
-                _this3.pauseGame();
+                _this5.pauseGame();
             });
             this.ea.subscribe('gameOver', function (response) {
-                _this3.clearTimedEvents();
+                _this5.clearTimedEvents();
+            });
+            this.ea.subscribe('snack', function (response) {
+                var method = response.split(':')[0];
+                _this5[method].call();
             });
         };
 
         TimingService.prototype.resetIntervals = function resetIntervals() {
-            this.stepInterval = 400;
-            this.scoreInterval = 10;
-            this.growInterval = 10;
-            this.speedupInterval = 10;
-            this.dropInterval = 0;
-
+            this.stepInterval = this.baseStepInterval;
+            this.scoreInterval = this.baseSoreInterval;
+            this.growInterval = this.baseGrowInterval;
+            this.speedupInterval = this.baseSpeedupInterval;
+            this.snackInterval = this.baseSnackInterval;
             this.speed = 1;
         };
 
@@ -846,7 +873,7 @@ define('resources/index',["exports"], function (exports) {
 });
 define('text!app.html', ['module'], function(module) { module.exports = "<template>\n    <require from=\"reset.css\"></require>\n    <require from=\"app.css\"></require>\n    <require from=\"components/game-screen\"></require>\n    <require from=\"components/restart-overlay\"></require>\n    <require from=\"components/status\"></require>\n    <h1 class=\"gameTitle\">${message}</h1>\n    <game-screen></game-screen>\n    <restart-overlay></restart-overlay>\n    <status></status>\n</template>"; });
 define('text!app.css', ['module'], function(module) { module.exports = "body {\n    position        : relative;\n    user-select     : none;\n    overflow        : hidden;\n    font-family     : 'Trebuchet MS', sans-serif;\n    background-color: crimson;\n    height          : 100vh;\n}\n\n.gameTitle {\n    position      : absolute;\n    z-index       : 2;\n    top           : 0;\n    width         : 100vw;\n    letter-spacing: 1px;\n    font-size     : 20px;\n    line-height   : 24px;\n    text-align    : center;\n    color         : whitesmoke;\n}\n"; });
-define('text!components/game-screen.html', ['module'], function(module) { module.exports = "<template>\n    <require from=\"components/game-screen.css\"></require>\n    <div class=\"snakeImages\">\n        <img repeat.for=\"image of snakeParts\"\n             class.bind=\"image\"\n             src=\"/images/${image}.png\">\n    </div>\n    <div class=\"snackImages\">\n        <img repeat.for=\"image of snacks\"\n             class.bind=\"image\"\n             src=\"/images/${image}.png\">\n    </div>\n    <canvas id=\"arena\"\n            class=\"arena\"></canvas>\n</template>"; });
+define('text!components/game-screen.html', ['module'], function(module) { module.exports = "<template>\n    <require from=\"components/game-screen.css\"></require>\n    <div class=\"snakeImages\">\n        <img repeat.for=\"image of snakeParts\"\n             class.bind=\"image\"\n             src=\"/images/${image}.png\">\n    </div>\n    <div class=\"snackImages\">\n        <img repeat.for=\"image of snackNames\"\n             class.bind=\"image\"\n             src=\"/images/${image}.png\">\n    </div>\n    <canvas id=\"arena\"\n            class=\"arena\"></canvas>\n</template>"; });
 define('text!reset.css', ['module'], function(module) { module.exports = "/* http://meyerweb.com/eric/tools/css/reset/ \n   v2.0 | 20110126\n   License: none (public domain)\n*/\n\na, abbr, acronym, address, applet, article, aside, audio, b, big, blockquote, body, canvas, caption, center, cite, code, dd, del, details, dfn, div, dl, dt, em, embed, fieldset, figcaption, figure, footer, form, h1, h2, h3, h4, h5, h6, header, hgroup, html, i, iframe, img, ins, kbd, label, legend, li, mark, menu, nav, object, ol, output, p, pre, q, ruby, s, samp, section, small, span, strike, strong, sub, summary, sup, table, tbody, td, tfoot, th, thead, time, tr, tt, u, ul, var, video {\n    margin        : 0;\n    padding       : 0;\n    border        : 0;\n    font-size     : 100%;\n    font          : inherit;\n    vertical-align: baseline;\n}\n/* HTML5 display-role reset for older browsers */\narticle, aside, details, figcaption, figure, footer, header, hgroup, menu, nav, section {\n    display: block;\n}\n\nbody {\n    line-height: 1;\n}\n\nol, ul {\n    list-style: none;\n}\n\nblockquote, q {\n    quotes: none;\n}\n\nblockquote:after, blockquote:before, q:after, q:before {\n    content: '';\n    content: none;\n}\n\ntable {\n    border-collapse: collapse;\n    border-spacing : 0;\n}\n"; });
 define('text!components/restart-overlay.html', ['module'], function(module) { module.exports = "<template class=\"${showOverlay || pause ? 'show' : ''}\"\n          click.delegate=\"start()\">\n    <require from=\"components/restart-overlay.css\"></require>\n    <h2 class=\"restart ${!pause && !firstGame ? 'show' : ''}\">Game over</h2>\n    <h2 class=\"restart ${!pause ? 'show' : ''}\">Click or tap or &lt;enter&gt; to start new game</h2>\n    <h2 class=\"paused ${pause ? 'show' : ''}\">Game paused</h2>\n    <h2 class=\"paused ${pause ? 'show' : ''}\">Press space to continue</h2>\n\n</template>"; });
 define('text!components/game-screen.css', ['module'], function(module) { module.exports = "game-Screen {\n    display        : flex;\n    flex-direction : column;\n    justify-content: center;\n    align-items    : center;\n    width          : 100vw;\n    height         : 100vh;\n    position       : relative;\n}\n\n.arena {\n    background-color: black;\n}\n\n.snackImages, .snakeImages {\n    display : none;\n    position: absolute;\n    top     : 0;\n    left    : 0;\n    z-index : 0;\n}\n"; });
