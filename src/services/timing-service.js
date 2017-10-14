@@ -3,15 +3,17 @@ import { EventAggregator } from 'aurelia-event-aggregator';
 import { SnakeService } from './snake-service';
 import { SnackService } from './snack-service';
 import { ScreenService } from './screen-service';
+import { ScoreService } from './score-service';
 
-@inject(EventAggregator, SnakeService, SnackService, ScreenService)
+@inject(EventAggregator, SnakeService, SnackService, ScreenService, ScoreService)
 
 export class TimingService {
-    constructor(eventAggregator, snakeService, snackService, screenService) {
+    constructor(eventAggregator, snakeService, snackService, screenService, scoreService) {
         this.ea = eventAggregator;
         this.snakeService = snakeService;
         this.snackService = snackService;
         this.screenService = screenService;
+        this.scoreService = scoreService;
 
         this.crawling = false;
         this.steps = 0;
@@ -26,13 +28,49 @@ export class TimingService {
         this.baseSpeedupInterval = 50;
         this.baseStepInterval = 400;
         this.dropInterval = 0;
+        this.snackDuration = 15000;
+
+        this.methods = {
+            axe: () => {
+                void (0)
+            },
+            beer: () => {
+                this.growSlower();
+            },
+            bunny: () => {
+                this.speedUp();
+            },
+            diamond: () => {
+                this.scoreService.update(10000);
+            },
+            gold: () => {
+                this.scoreService.update(1000);
+            },
+            ruby: () => {
+                this.multiPlyScore()
+            },
+            skull: () => {
+                this.dropSnake();
+            },
+            snail: () => {
+                this.slowDown();
+            },
+            trash: () => {
+                this.snackService.initSnacks();
+            },
+            viagra: () => {
+                this.growHarder();
+            }
+        }
 
         this.setSubscribers();
     }
 
     startGame() {
         this.resetIntervals();
+        this.scoreService.initScore();
         this.snakeService.initSnake(1);
+        this.snackService.initSnacks();
         this.crawling = true;
         this.resumeGame();
     }
@@ -53,6 +91,15 @@ export class TimingService {
         this.screenService.fadeArena();
         this.screenService.drawSnacks(this.snackService.snacks);
         this.screenService.drawSnake(this.snakeService.snake);
+        this.scoreService.update(this.snakeService.snake.segments.length);
+    }
+
+    dropSnake() {
+        this.fallTimerHandle = setInterval(() => {
+            this.snakeService.fallDown();
+            this.screenService.fadeArena();
+            this.screenService.drawSnake(this.snakeService.snake);
+        }, this.dropInterval);
     }
 
     speedUp() {
@@ -65,20 +112,13 @@ export class TimingService {
         }
     }
 
-    dropSnake() {
-        this.fallTimerHandle = setInterval(() => {
-            this.snakeService.dropSnake();
-            this.screenService.fadeArena();
-            this.screenService.drawSnake(this.snakeService.snake);
-        }, this.dropInterval);
-    }
-
-    growHarder() {
-        if (this.growInterval > baseGrowInterval) {
-            this.growInterval -= 2;
-            setTimeout(() => {
-                this.growInterval += 2;
-            }, 15000);
+    slowDown() {
+        if (this.baseStepInterval < 7) {
+            this.speed -= 1;
+            this.clearTimedEvents();
+            this.stepInterval += 40;
+            this.resumeGame();
+            this.ea.publish('speed', this.speed);
         }
     }
 
@@ -86,14 +126,28 @@ export class TimingService {
         this.growInterval += 2;
         setTimeout(() => {
             this.growInterval -= 2;
-        }, 15000);
+        }, this.snackDuration);
+    }
+
+    growHarder() {
+        if (this.growInterval > this.baseGrowInterval) {
+            this.growInterval -= 2;
+            setTimeout(() => {
+                this.growInterval += 2;
+            }, this.snackDuration);
+        }
+    }
+
+    multiPlyScore() {
+        this.scoreService.setMultiplier();
+        setTimeout(() => {
+            this.scoreService.resetMultiplier();
+        }, this.snackDuration);
     }
 
     clearTimedEvents() {
         clearInterval(this.stepTimerHandle);
         clearInterval(this.fallTimerHandle);
-        // clearInterval(this.snackTimerHandle);
-        // clearInterval(this.scoreTimerHandle);
     }
 
     pauseGame() {
@@ -138,8 +192,8 @@ export class TimingService {
             this.clearTimedEvents();
         });
         this.ea.subscribe('snack', response => {
-            let method = response.split(':')[0];
-            this[method].call();
+            let method = response.split(':')[0].toLowerCase();
+            this.methods[method]();
         });
 
     }

@@ -59,7 +59,7 @@ export class SnackService {
         this.snacks.splice(index, 1);
     }
 
-    initStuff() {
+    initSnacks() {
         this.snacks = [];
     }
 

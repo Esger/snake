@@ -11,6 +11,7 @@ export class StatusCustomElement {
 
     constructor(eventAggregator) {
         this.ea = eventAggregator;
+        this.score = 0;
         this.resetVars();
     }
 

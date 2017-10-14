@@ -28,17 +28,40 @@ export class SnakeService {
             deadSegments: []
         }
         this.snackMethods = {
-            'nope': void (0),
-            'axe': this.cutSnake(),
-            'beer': this.growSlower(),
-            'bunny': this.speedUp(),
-            // 'diamond': this.score100(),
-            // 'gold': this.score10(),
-            // 'ruby': this.scoreX10(),
-            // 'skull': this.die(),
-            // 'snail': this.slowdown(),
-            // 'trash': this.trashSnacks(),
-            // 'viagra': this.growHarder()
+            nope: () => {
+                void (0);
+            },
+            axe: () => {
+                this.cutSnake();
+                this.ea.publish('snack', 'Axe: you lost half of your length');
+            },
+            beer: () => {
+                this.ea.publish('snack', 'Beer: growing slower for 15 seconds');
+            },
+            bunny: () => {
+                this.ea.publish('snack', 'Bunny: running faster for 15 seconds');
+            },
+            diamond: () => {
+                this.ea.publish('snack', 'Diamond: you scored 10000 points');
+            },
+            gold: () => {
+                this.ea.publish('snack', 'Gold: you scored 1000 points');
+            },
+            ruby: () => {
+                this.ea.publish('snack', 'Ruby: score multiplier for 15 seconds');
+            },
+            skull: () => {
+                this.ea.publish('snack', 'Skull: you die');
+            },
+            snail: () => {
+                this.ea.publish('snack', 'Snail: running slower for 15 seconds');
+            },
+            trash: () => {
+                this.ea.publish('snack', 'Trash: trash all extra&rsquo;s');
+            },
+            viagra: () => {
+                this.ea.publish('snack', 'Viagra: growing harder for 15 seconds');
+            }
         }
         this.setSubscribers();
     }
@@ -48,9 +71,6 @@ export class SnakeService {
         (this.snake.turnSteps > 0) && this.snake.turnSteps--;
         this.advanceHead();
         (!grow) && (this.snake.segments.pop());
-        // call the function named with value of snack
-        // (snack !== '') && this[snack]();
-        // (this.hitSnake() || this.hitWall()) && this.die();
     }
 
     advanceHead() {
@@ -60,7 +80,31 @@ export class SnakeService {
         this.snake.segments.unshift(head);
         this.hitWall();
         this.hitSnake();
-        this.snackMethods[this.snackService.hitSnack(head)];
+        let method = this.snackService.hitSnack(head).toLowerCase();
+        this.snackMethods[method]();
+    }
+
+    cutSnake() {
+        let halfSnake = Math.floor(this.snake.segments.length / 2)
+        this.snake.segments.splice(-halfSnake);
+    }
+
+    fallDown() {
+        this.crawling = false;
+        for (let i = 0; i < this.snake.segments.length; i++) {
+            if (this.snake.deadSegments.indexOf(i) < 0) {
+                let segment = this.snake.segments[i];
+                let newY = (segment[1] + 1) * 1.05;
+                if (newY <= this.screenService.limits.bottom) {
+                    segment[1] = newY;
+                } else {
+                    this.snake.deadSegments.push(i);
+                }
+            }
+            if (this.snake.deadSegments.length >= this.snake.segments.length) {
+                this.ea.publish('gameOver');
+            }
+        }
     }
 
     hitWall() {
@@ -87,89 +131,6 @@ export class SnakeService {
 
     samePosition(pos1, pos2) {
         return pos1[0] == pos2[0] && pos1[1] == pos2[1];
-    }
-
-    dropSnake() {
-        for (let i = 0; i < this.snake.segments.length; i++) {
-            if (this.snake.deadSegments.indexOf(i) < 0) {
-                let segment = this.snake.segments[i];
-                let newY = (segment[1] + 1) * 1.05;
-                if (newY <= this.screenService.limits.bottom) {
-                    segment[1] = newY;
-                } else {
-                    this.snake.deadSegments.push(i);
-                }
-            }
-            if (this.snake.deadSegments.length >= this.snake.segments.length) {
-                this.ea.publish('gameOver');
-            }
-        }
-    }
-
-    cutSnake() {
-        let halfSnake = Math.floor(this.snake.segments.length / 2)
-        this.snake.segments.splice(-halfSnake);
-        this.ea.publish('snack', 'Axe: you lost half of your length');
-    }
-
-    speedUp() {
-        this.ea.publish('snack', 'Bunny: running faster for 15 seconds');
-    }
-
-    growHarder() {
-        this.ea.publish('snack', 'Viagra: growing harder for 15 seconds');
-    }
-
-    growSlower() {
-        this.ea.publish('snack', 'Beer: growing slower for 15 seconds');
-    }
-
-    score100() {
-        this.scoreUpdate(1000);
-        this.ea.publish('snack', 'Diamond: you scored 1000 points');
-    }
-    score10() {
-        this.scoreUpdate(100);
-        this.ea.publish('snack', 'Gold: you scored 100 points');
-    }
-    scoreX10() {
-        if (this.scoreInterval > 250) {
-            this.scoreInterval -= 250;
-            setTimeout(() => {
-                this.scoreInterval += 250;
-            }, 15000);
-            this.ea.publish('snack', 'Ruby: scoring faster for 15 seconds');
-        }
-    }
-    trashSnacks() {
-        this.snacks.onBoard = [];
-        this.ea.publish('snack', 'Trash: you trashed all extra&rsquo;s');
-    }
-
-    slowdown() {
-        console.log('slowdown');
-        if (this.stepInterval < 7) {
-            this.stepInterval += 1;
-            this.restartIntervals();
-            this.ea.publish('speedChange', -1);
-        }
-        this.ea.publish('snack', 'Snail: running slower');
-    }
-
-    die() {
-        this.keysOff();
-        this.crawling = false;
-        this.clearTimedEvents()
-        this.fall();
-    }
-
-    scoreUpdate(amount) {
-        if (amount) {
-            this.score += amount;
-        } else {
-            this.score += this.snake.segments.length;
-        }
-        this.ea.publish('score', this.score);
     }
 
     setSubscribers() {
