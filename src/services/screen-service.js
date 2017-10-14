@@ -35,11 +35,7 @@ export class ScreenService {
         for (let i = 0; i < snacks.length; i++) {
             let snack = snacks[i];
             this.ctx.save();
-            // this.ctx.strokeStyle = 'goldenrod';
-            // this.ctx.rect(snack.position[0], snack.position[1], this.snackSize, this.snackSize);
-            // this.ctx.stroke();
             this.ctx.translate(snack.position[0] - this.halfSnackSize, snack.position[1] - this.halfSnackSize);
-            // snacks are larger
             this.ctx.drawImage(this.snackImages[snack.nameIndex], 0, 0, this.snackSize, this.snackSize);
             this.ctx.restore();
         }

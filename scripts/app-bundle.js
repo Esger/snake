@@ -452,9 +452,7 @@ define('services/screen-service',['exports', 'aurelia-framework', 'aurelia-event
             for (var i = 0; i < snacks.length; i++) {
                 var snack = snacks[i];
                 this.ctx.save();
-
                 this.ctx.translate(snack.position[0] - this.halfSnackSize, snack.position[1] - this.halfSnackSize);
-
                 this.ctx.drawImage(this.snackImages[snack.nameIndex], 0, 0, this.snackSize, this.snackSize);
                 this.ctx.restore();
             }
@@ -530,10 +528,10 @@ define('services/snack-service',['exports', 'aurelia-framework', 'aurelia-event-
             return pos1[0] == pos2[0] && pos1[1] == pos2[1];
         };
 
-        SnackService.prototype.hitSnack = function hitSnack(head) {
+        SnackService.prototype.hitSnack = function hitSnack(head, neck) {
             for (var i = 0; i < this.snacks.length - 1; i++) {
                 var snack = this.snacks[i];
-                if (this.samePosition(snack.position, head)) {
+                if (this.samePosition(snack.position, head) || this.samePosition(snack.position, neck)) {
                     this.removeSnack(i);
                     return snack.name;
                 }
@@ -607,13 +605,13 @@ define('services/snake-service',['exports', 'aurelia-framework', 'aurelia-event-
                     _this.ea.publish('snack', 'Bunny: running faster for 15 seconds');
                 },
                 diamond: function diamond() {
-                    _this.ea.publish('snack', 'Diamond: you scored 10000 points');
+                    _this.ea.publish('snack', 'Diamond: 10000 points');
                 },
                 gold: function gold() {
-                    _this.ea.publish('snack', 'Gold: you scored 1000 points');
+                    _this.ea.publish('snack', 'Gold: 1000 points');
                 },
                 ruby: function ruby() {
-                    _this.ea.publish('snack', 'Ruby: score multiplier for 15 seconds');
+                    _this.ea.publish('snack', 'Ruby: score &times; 10 for 15 seconds');
                 },
                 skull: function skull() {
                     _this.ea.publish('snack', 'Skull: you die');
@@ -639,12 +637,14 @@ define('services/snake-service',['exports', 'aurelia-framework', 'aurelia-event-
 
         SnakeService.prototype.advanceHead = function advanceHead() {
             var head = this.snake.segments[0].slice();
+            var neck = head;
+            this.snake.segments.length > 1 && (neck = this.snake.segments[1].slice());
             head[0] += this.snake.directions[this.snake.direction][0] * this.snake.segmentSize;
             head[1] += this.snake.directions[this.snake.direction][1] * this.snake.segmentSize;
             this.snake.segments.unshift(head);
             this.hitWall();
             this.hitSnake();
-            var method = this.snackService.hitSnack(head).toLowerCase();
+            var method = this.snackService.hitSnack(head, neck).toLowerCase();
             this.snackMethods[method]();
         };
 
@@ -827,7 +827,7 @@ define('services/timing-service',['exports', 'aurelia-framework', 'aurelia-event
         TimingService.prototype.startGame = function startGame() {
             this.resetIntervals();
             this.scoreService.initScore();
-            this.snakeService.initSnake(1);
+            this.snakeService.initSnake();
             this.snackService.initSnacks();
             this.crawling = true;
             this.resumeGame();

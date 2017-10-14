@@ -36,10 +36,11 @@ export class SnackService {
         return pos1[0] == pos2[0] && pos1[1] == pos2[1];
     }
 
-    hitSnack(head) {
+    hitSnack(head, neck) {
         for (let i = 0; i < this.snacks.length - 1; i++) {
             let snack = this.snacks[i];
-            if (this.samePosition(snack.position, head)) {
+            if (this.samePosition(snack.position, head) ||
+                this.samePosition(snack.position, neck)) {
                 this.removeSnack(i);
                 return snack.name;
             }

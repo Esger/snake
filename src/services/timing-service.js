@@ -70,7 +70,7 @@ export class TimingService {
     startGame() {
         this.resetIntervals();
         this.scoreService.initScore();
-        this.snakeService.initSnake(1);
+        this.snakeService.initSnake();
         this.snackService.initSnacks();
         this.crawling = true;
         this.resumeGame();
