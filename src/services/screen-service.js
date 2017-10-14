@@ -20,10 +20,10 @@ export class ScreenService {
 
     drawSnake(snake) {
         let type = 0;
-        for (var i = 0; i < snake.segments.length; i++) {
+        for (let i = 0; i < snake.segments.length; i++) {
             let segment = snake.segments[i];
             this.ctx.save();
-            this.ctx.translate(segment.position[0], segment.position[1]);
+            this.ctx.translate(segment[0], segment[1]);
             (segment.type !== 1) && this.ctx.rotate(snake.direction * Math.PI / 2);
             this.ctx.drawImage(this.snakeImages[type], -this.halfSprite, -this.halfSprite);
             this.ctx.restore();
@@ -31,26 +31,27 @@ export class ScreenService {
         }
     }
 
-    drawSnack(snack) {
-        this.ctx.save();
-        // ctx.strokeStyle = 'goldenrod';
-        // ctx.rect(snack.position[0], snack.position[1], this.snackSize, this.snackSize);
-        // ctx.stroke();
-        this.ctx.translate(snack.position[0], snack.position[1]);
-        // snacks are 2x larger
-        this.ctx.drawImage(this.snackImages[snack.index], 0, 0, this.snackSize, this.snackSize);
-        this.ctx.restore();
-    }
-
-    drawSnacks() {
-        this.snacks.onBoard.forEach((snack) => {
-            gameScreen.drawSnack(snack);
-        })
+    drawSnacks(snacks) {
+        for (let i = 0; i < snacks.length; i++) {
+            let snack = snacks[i];
+            this.ctx.save();
+            // this.ctx.strokeStyle = 'goldenrod';
+            // this.ctx.rect(snack.position[0], snack.position[1], this.snackSize, this.snackSize);
+            // this.ctx.stroke();
+            this.ctx.translate(snack.position[0] - this.halfSnackSize, snack.position[1] - this.halfSnackSize);
+            // snacks are larger
+            this.ctx.drawImage(this.snackImages[snack.nameIndex], 0, 0, this.snackSize, this.snackSize);
+            this.ctx.restore();
+        }
     }
 
     fadeArena() {
-        this.ctx.fillStyle = 'rgba(0,0,0,0.4)';
+        this.ctx.fillStyle = 'rgba(0,0,0,0.95)';
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+    }
+
+    roundToSpriteSize(size) {
+        return Math.floor(size / this.spriteSize) * this.spriteSize + this.halfSprite;
     }
 
     setDomVars($arena, snakeImages, snackImages) {
@@ -58,16 +59,15 @@ export class ScreenService {
         this.ctx = this.canvas.getContext('2d');
         this.canvas.width = this.canvas.clientWidth;
         this.canvas.height = this.canvas.clientHeight;
-        this.wallSize = parseInt($arena.css('borderWidth'), 10);
         this.canvasCenter = {
-            x: parseInt($arena.width() / 2, 10),
-            y: parseInt($arena.height() / 2, 10)
+            x: this.roundToSpriteSize($arena.width() / 2),
+            y: this.roundToSpriteSize($arena.height() / 2)
         };
         this.limits = {
-            right: this.canvas.width - this.wallSize,
-            bottom: this.canvas.height - this.wallSize,
-            left: this.wallSize,
-            top: this.wallSize
+            right: this.canvas.width,
+            bottom: this.canvas.height,
+            left: 0,
+            top: 0
         };
         this.snakeImages = snakeImages;
         this.snackImages = snackImages;

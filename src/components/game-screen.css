@@ -1,10 +1,15 @@
+game-Screen {
+    display        : flex;
+    flex-direction : column;
+    justify-content: center;
+    align-items    : center;
+    width          : 100vw;
+    height         : 100vh;
+    position       : relative;
+}
+
 .arena {
-    position        : relative;
-    z-index         : 1;
-    width           : calc(100vw - 48px);
-    height          : calc(100vh - 48px);
     background-color: black;
-    border          : 24px solid crimson;
 }
 
 .snackImages, .snakeImages {

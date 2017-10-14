@@ -1,16 +1,15 @@
-import {
-    inject
-} from 'aurelia-framework';
-import {
-    EventAggregator
-} from 'aurelia-event-aggregator';
+import { inject } from 'aurelia-framework';
+import { EventAggregator } from 'aurelia-event-aggregator';
+import { ScreenService } from './screen-service'
 
-@inject(EventAggregator)
+@inject(EventAggregator, ScreenService)
 
 export class SnackService {
-    constructor(eventAggregator) {
+    constructor(eventAggregator, screenService) {
         this.ea = eventAggregator;
-        this.snacks = [
+        this.screenService = screenService;
+        this.snacks = [];
+        this.names = [
             'axe',
             'beer',
             'bunny',
@@ -22,46 +21,46 @@ export class SnackService {
             'trash',
             'viagra'
         ]
-        // this.snacks = {
-        //     images: [],
-        //     onBoard: [],
-        //     methods: {
-        //         'axe': 'cutSnake',
-        //         'beer': 'growSlower',
-        //         'bunny': 'speedup',
-        //         'diamond': 'score100',
-        //         'gold': 'score10',
-        //         'ruby': 'scoreX10',
-        //         'skull': 'die',
-        //         'snail': 'slowdown',
-        //         'trash': 'trashSnacks',
-        //         'viagra': 'growHarder'
-        //         //'weed': 'mixSnacks'
-        //     }
-        // }
     }
 
     newSnack(x, y, name, i) {
         let snack = {
             position: [x, y],
             name: name,
-            index: i
+            nameIndex: i
         }
         return snack;
     }
 
+    samePosition(pos1, pos2) {
+        return pos1[0] == pos2[0] && pos1[1] == pos2[1];
+    }
+
+    hitSnack(head) {
+        for (let i = 0; i < this.snacks.length - 1; i++) {
+            let snack = this.snacks[i];
+            if (this.samePosition(snack.position, head)) {
+                this.removeSnack(i);
+                return snack.name;
+            }
+        }
+        return 'nope';
+    }
+
     addSnack() {
-        let snack = Math.floor(Math.random() * this.snacks.images.length);
-        let name = this.snacks.images[snack].className;
-        // compensate for border width (24);
-        let x = Math.floor(Math.random() * this.canvas.width - 24) + 24;
-        let y = Math.floor(Math.random() * this.canvas.height - 24) + 24;
-        this.snacks.onBoard.push(this.newSnack(x, y, name, snack));
+        let randomIndex = Math.floor(Math.random() * this.names.length);
+        let snack = this.names[randomIndex];
+        let x = this.screenService.roundToSpriteSize(Math.floor(Math.random() * (this.screenService.limits.right - this.screenService.spriteSize)))
+        let y = this.screenService.roundToSpriteSize(Math.floor(Math.random() * (this.screenService.limits.bottom - this.screenService.spriteSize)))
+        this.snacks.push(this.newSnack(x, y, snack, randomIndex));
     }
 
-    initStuff() {
-        this.snacks.onBoard = [];
+    removeSnack(index) {
+        this.snacks.splice(index, 1);
     }
 
+    initSnacks() {
+        this.snacks = [];
+    }
 
 }
