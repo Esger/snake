@@ -33,13 +33,13 @@ export class SnakeService {
             },
             axe: () => {
                 this.cutSnake();
-                this.ea.publish('snack', 'Axe: you lost half of your length');
+                this.ea.publish('snack', 'Axe: lost half of yourself');
             },
             beer: () => {
-                this.ea.publish('snack', 'Beer: growing slower for 15 seconds');
+                this.ea.publish('snack', 'Beer: grow slower for 15 seconds');
             },
             bunny: () => {
-                this.ea.publish('snack', 'Bunny: running faster for 15 seconds');
+                this.ea.publish('snack', 'Bunny: run faster for 15 seconds');
             },
             diamond: () => {
                 this.ea.publish('snack', 'Diamond: 10000 points');
@@ -54,13 +54,13 @@ export class SnakeService {
                 this.ea.publish('snack', 'Skull: you die');
             },
             snail: () => {
-                this.ea.publish('snack', 'Snail: running slower for 15 seconds');
+                this.ea.publish('snack', 'Snail: run slower for 15 seconds');
             },
             trash: () => {
                 this.ea.publish('snack', 'Trash: trash all extra&rsquo;s');
             },
             viagra: () => {
-                this.ea.publish('snack', 'Viagra: growing harder for 15 seconds');
+                this.ea.publish('snack', 'Viagra: grow harder for 15 seconds');
             }
         }
         this.setSubscribers();
@@ -112,10 +112,10 @@ export class SnakeService {
     hitWall() {
         let head = this.snake.segments[0];
         let wallHit =
-            head[0] >= this.screenService.limits.right - this.halfSprite ||
-            head[0] <= this.screenService.limits.left + this.halfSprite ||
-            head[1] >= this.screenService.limits.bottom - this.halfSprite ||
-            head[1] <= this.screenService.limits.top + this.halfSprite;
+            head[0] > this.screenService.limits.right - this.halfSprite ||
+            head[0] < this.screenService.limits.left + this.halfSprite ||
+            head[1] > this.screenService.limits.bottom - this.halfSprite ||
+            head[1] < this.screenService.limits.top + this.halfSprite;
         wallHit && (this.ea.publish('die', 'You hit a wall'));
     }
 
