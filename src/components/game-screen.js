@@ -31,26 +31,42 @@ export class GameScreenCustomElement {
         return Math.floor(size / this.spriteSize) * this.spriteSize;
     }
 
+    snakeImage(index) {
+        switch (index) {
+            case 0: return 'head';
+            case this.snakeService.snake.segments.length: return 'tail';
+            default: return 'body';
+        }
+    }
+
+    segmentCSS(index) {
+        let segment = this.snakeService.snake.segments[index];
+        let rotation = 0;
+        if (index == 0) {
+            rotation = this.snakeService.snake.direction * 90;
+        }
+        let css = 'left: ' + segment[0] + 'px; top:' + segment[1] + 'px; transform: rotate(' + rotation + 'deg);'
+        return css;
+    }
+
+    snackPosition(index) {
+        let snack = this.snackService.snacks[index];
+        return {
+            left: snack.position[0] + 'px',
+            top: snack.position[1] + 'px'
+        }
+    }
+
     attached() {
         let self = this;
         this.$arena = $('.arena');
         let $body = $('body');
-        let $snakeImages = $('.snakeImages img');
-        let $snackImages = $('.snackImages img');
         let targetWidth = this.roundToSpriteSize($body.width() - 48);
         let targetHeight = this.roundToSpriteSize($body.height() - 48);
         this.$arena.width(targetWidth);
-        this.$arena.height(targetHeight)
-        $snakeImages.each(function () {
-            self.snakeImages.push(this);
-        });
-        $snackImages.each(function () {
-            self.snackImages.push(this);
-        });
-        $(() => {
-            this.screenService.setDomVars(this.$arena, this.snakeImages, this.snackImages);
-            this.snakeService.setCenter();
-        });
+        this.$arena.height(targetHeight);
+        this.screenService.setDomVars(this.$arena);
+        this.snakeService.setCenter();
     }
 
 }

@@ -120,28 +120,45 @@ define('components/game-screen',['exports', 'aurelia-framework', 'aurelia-event-
             return Math.floor(size / this.spriteSize) * this.spriteSize;
         };
 
-        GameScreenCustomElement.prototype.attached = function attached() {
-            var _this = this;
+        GameScreenCustomElement.prototype.snakeImage = function snakeImage(index) {
+            switch (index) {
+                case 0:
+                    return 'head';
+                case this.snakeService.snake.segments.length:
+                    return 'tail';
+                default:
+                    return 'body';
+            }
+        };
 
+        GameScreenCustomElement.prototype.segmentCSS = function segmentCSS(index) {
+            var segment = this.snakeService.snake.segments[index];
+            var rotation = 0;
+            if (index == 0) {
+                rotation = this.snakeService.snake.direction * 90;
+            }
+            var css = 'left: ' + segment[0] + 'px; top:' + segment[1] + 'px; transform: rotate(' + rotation + 'deg);';
+            return css;
+        };
+
+        GameScreenCustomElement.prototype.snackPosition = function snackPosition(index) {
+            var snack = this.snackService.snacks[index];
+            return {
+                left: snack.position[0] + 'px',
+                top: snack.position[1] + 'px'
+            };
+        };
+
+        GameScreenCustomElement.prototype.attached = function attached() {
             var self = this;
             this.$arena = $('.arena');
             var $body = $('body');
-            var $snakeImages = $('.snakeImages img');
-            var $snackImages = $('.snackImages img');
             var targetWidth = this.roundToSpriteSize($body.width() - 48);
             var targetHeight = this.roundToSpriteSize($body.height() - 48);
             this.$arena.width(targetWidth);
             this.$arena.height(targetHeight);
-            $snakeImages.each(function () {
-                self.snakeImages.push(this);
-            });
-            $snackImages.each(function () {
-                self.snackImages.push(this);
-            });
-            $(function () {
-                _this.screenService.setDomVars(_this.$arena, _this.snakeImages, _this.snackImages);
-                _this.snakeService.setCenter();
-            });
+            this.screenService.setDomVars(this.$arena);
+            this.snakeService.setCenter();
         };
 
         return GameScreenCustomElement;
@@ -444,41 +461,12 @@ define('services/screen-service',['exports', 'aurelia-framework', 'aurelia-event
             this.canvasCenter = {};
         }
 
-        ScreenService.prototype.drawSnake = function drawSnake(snake) {
-            var type = 0;
-            for (var i = 0; i < snake.segments.length; i++) {
-                var segment = snake.segments[i];
-                this.ctx.save();
-                this.ctx.translate(segment[0], segment[1]);
-                segment.type !== 1 && this.ctx.rotate(snake.direction * Math.PI / 2);
-                this.ctx.drawImage(this.snakeImages[type], -this.halfSprite, -this.halfSprite);
-                this.ctx.restore();
-                type = 1;
-            }
-        };
-
-        ScreenService.prototype.drawSnacks = function drawSnacks(snacks) {
-            for (var i = 0; i < snacks.length; i++) {
-                var snack = snacks[i];
-                this.ctx.save();
-                this.ctx.translate(snack.position[0] - this.halfSnackSize, snack.position[1] - this.halfSnackSize);
-                this.ctx.drawImage(this.snackImages[snack.nameIndex], 0, 0, this.snackSize, this.snackSize);
-                this.ctx.restore();
-            }
-        };
-
-        ScreenService.prototype.fadeArena = function fadeArena() {
-            this.ctx.fillStyle = 'rgba(0,0,0,0.95)';
-            this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-        };
-
         ScreenService.prototype.roundToSpriteSize = function roundToSpriteSize(size) {
             return Math.floor(size / this.spriteSize) * this.spriteSize + this.halfSprite;
         };
 
-        ScreenService.prototype.setDomVars = function setDomVars($arena, snakeImages, snackImages) {
+        ScreenService.prototype.setDomVars = function setDomVars($arena) {
             this.canvas = $('#arena')[0];
-            this.ctx = this.canvas.getContext('2d');
             this.canvas.width = this.canvas.clientWidth;
             this.canvas.height = this.canvas.clientHeight;
             this.canvasCenter = {
@@ -491,8 +479,6 @@ define('services/screen-service',['exports', 'aurelia-framework', 'aurelia-event
                 left: 0,
                 top: 0
             };
-            this.snakeImages = snakeImages;
-            this.snackImages = snackImages;
         };
 
         return ScreenService;
@@ -857,9 +843,6 @@ define('services/timing-service',['exports', 'aurelia-framework', 'aurelia-event
             this.steps % this.speedupInterval == 0 && this.speedUp();
             this.steps % this.snackInterval == 0 && this.snackService.addSnack();
             this.snakeService.step(grow);
-            this.screenService.fadeArena();
-            this.screenService.drawSnacks(this.snackService.snacks);
-            this.screenService.drawSnake(this.snakeService.snake);
             this.scoreService.update(this.snakeService.snake.segments.length);
         };
 
@@ -868,8 +851,6 @@ define('services/timing-service',['exports', 'aurelia-framework', 'aurelia-event
 
             this.fallTimerHandle = setInterval(function () {
                 _this3.snakeService.fallDown();
-                _this3.screenService.fadeArena();
-                _this3.screenService.drawSnake(_this3.snakeService.snake);
             }, this.dropInterval);
         };
 
@@ -1089,10 +1070,10 @@ define('aurelia-cookie/aurelia-cookie',["require", "exports"], function (require
 
 define('text!app.html', ['module'], function(module) { module.exports = "<template>\n    <require from=\"reset.css\"></require>\n    <require from=\"app.css\"></require>\n    <require from=\"components/game-screen\"></require>\n    <require from=\"components/restart-overlay\"></require>\n    <require from=\"components/status\"></require>\n    <h1 class=\"gameTitle\">${message}</h1>\n    <game-screen></game-screen>\n    <restart-overlay></restart-overlay>\n    <status></status>\n</template>"; });
 define('text!app.css', ['module'], function(module) { module.exports = "body {\n    position         : relative;\n    user-select      : none;\n    overflow         : hidden;\n    font-family      : 'Trebuchet MS', sans-serif;\n    background-color : crimson;\n    background-image : url(\"./images/border.png\");\n    background-repeat: no-repeat;\n    background-size  : 100% 100%;\n    height           : 100vh;\n}\n\n.gameTitle {\n    position      : absolute;\n    z-index       : 2;\n    top           : 0;\n    width         : 100vw;\n    letter-spacing: 1px;\n    font-size     : 20px;\n    line-height   : 24px;\n    text-align    : center;\n    color         : whitesmoke;\n}\n"; });
-define('text!components/game-screen.html', ['module'], function(module) { module.exports = "<template>\n    <require from=\"components/game-screen.css\"></require>\n    <div class=\"snakeImages\">\n        <img repeat.for=\"image of snakeParts\"\n             class.bind=\"image\"\n             src=\"./images/${image}.png\">\n    </div>\n    <div class=\"snackImages\">\n        <img repeat.for=\"image of snackNames\"\n             class.bind=\"image\"\n             src=\"./images/${image}.png\">\n    </div>\n    <canvas id=\"arena\"\n            class=\"arena\"></canvas>\n</template>"; });
+define('text!components/game-screen.html', ['module'], function(module) { module.exports = "<template>\n    <require from=\"components/game-screen.css\"></require>\n    <div id=\"arena\"\n         class=\"arena\">\n        <img repeat.for=\"snack of snackService.snacks\"\n             src=\"./images/${snack.name}.png\"\n             css.bind=\"snackPosition($index)\"\n             class=\"snack\">\n        <img repeat.for=\"segment of snakeService.snake.segments\"\n             css.bind=\"segmentCSS($index)\"\n             src=\"./images/${ snakeImage($index) }.png\"\n             class=\"segment\">\n    </div>\n</template>"; });
 define('text!reset.css', ['module'], function(module) { module.exports = "/* http://meyerweb.com/eric/tools/css/reset/ \n   v2.0 | 20110126\n   License: none (public domain)\n*/\n\na, abbr, acronym, address, applet, article, aside, audio, b, big, blockquote, body, canvas, caption, center, cite, code, dd, del, details, dfn, div, dl, dt, em, embed, fieldset, figcaption, figure, footer, form, h1, h2, h3, h4, h5, h6, header, hgroup, html, i, iframe, img, ins, kbd, label, legend, li, mark, menu, nav, object, ol, output, p, pre, q, ruby, s, samp, section, small, span, strike, strong, sub, summary, sup, table, tbody, td, tfoot, th, thead, time, tr, tt, u, ul, var, video {\n    margin        : 0;\n    padding       : 0;\n    border        : 0;\n    font-size     : 100%;\n    font          : inherit;\n    vertical-align: baseline;\n}\n/* HTML5 display-role reset for older browsers */\narticle, aside, details, figcaption, figure, footer, header, hgroup, menu, nav, section {\n    display: block;\n}\n\nbody {\n    line-height: 1;\n}\n\nol, ul {\n    list-style: none;\n}\n\nblockquote, q {\n    quotes: none;\n}\n\nblockquote:after, blockquote:before, q:after, q:before {\n    content: '';\n    content: none;\n}\n\ntable {\n    border-collapse: collapse;\n    border-spacing : 0;\n}\n"; });
 define('text!components/restart-overlay.html', ['module'], function(module) { module.exports = "<template class=\"${showOverlay || pause ? 'show' : ''}\"\n          click.delegate=\"start()\">\n    <require from=\"components/restart-overlay.css\"></require>\n    <h2 class=\"restart ${!pause && !firstGame ? 'show' : ''}\">Game over</h2>\n    <h2 class=\"restart ${!pause ? 'show' : ''}\">Click or tap or &lt;enter&gt; to start new game</h2>\n    <h2 class=\"paused ${pause ? 'show' : ''}\">Game paused</h2>\n    <h2 class=\"paused ${pause ? 'show' : ''}\">Press space to continue</h2>\n\n</template>"; });
-define('text!components/game-screen.css', ['module'], function(module) { module.exports = "game-Screen {\n    display        : flex;\n    flex-direction : column;\n    justify-content: center;\n    align-items    : center;\n    width          : 100vw;\n    height         : 100vh;\n    position       : relative;\n}\n\n.arena {\n    background-color: black;\n}\n\n.snackImages, .snakeImages {\n    display : none;\n    position: absolute;\n    top     : 0;\n    left    : 0;\n    z-index : 0;\n}\n"; });
+define('text!components/game-screen.css', ['module'], function(module) { module.exports = "game-Screen {\n    display        : flex;\n    flex-direction : column;\n    justify-content: center;\n    align-items    : center;\n    width          : 100vw;\n    height         : 100vh;\n    position       : relative;\n}\n\n.arena {\n    background-color: black;\n}\n\n.arena img {\n    position: absolute;\n}\n\n.arena .segment {\n    transform-origin: 50% 50%;\n    transition      : all .5s;\n}\n\n.arena .snack {\n    width    : 24px;\n    height   : 24px;\n    transform: translate(-4px,-4px);\n}\n"; });
 define('text!components/status.html', ['module'], function(module) { module.exports = "<template>\n    <require from=\"components/status.css\"></require>\n    <h2 class=\"statusLine\">\n        <span>Speed:</span><span class=\"speed\">${speed}</span>\n        <span>Length:</span><span class=\"length\">${length}</span>\n        <span>Score:</span><span class=\"score\">${score}</span>\n        <span click.delegate=\"resetHighscore()\"><span>High:</span><span class=\"high\">${highScore}</span></span>\n        <span class=\"snack\"\n              innerhtml.bind=\"snack\"></span>\n    </h2>\n</template>"; });
 define('text!components/restart-overlay.css', ['module'], function(module) { module.exports = "restart-overlay {\n    position        : absolute;\n    z-index         : 10;\n    top             : 0;\n    left            : 0;\n    display         : flex;\n    flex-direction  : column;\n    justify-content : space-around;\n    align-items     : center;\n    width           : 100vw;\n    height          : 100vh;\n    background-color: rgba(0,0,0,.7);\n    opacity         : 0;\n    pointer-events  : none;\n    transition      : all .2s;\n}\n\nrestart-overlay.show {\n    opacity       : 1;\n    pointer-events: all;\n}\n\nrestart-overlay h2 {\n    font-size  : 4vmin;\n    line-height: 4vmin;\n    color      : whitesmoke;\n}\n\n.paused, .restart {\n    display: none;\n}\n\n.paused.show, .restart.show {\n    display: block;\n}\n"; });
 define('text!components/status.css', ['module'], function(module) { module.exports = "status {\n    position  : absolute;\n    z-index   : 2;\n    bottom    : 0;\n    width     : 100vw;\n    text-align: center;\n}\n\n.statusLine {\n    font-size  : 18px;\n    line-height: 30px;\n    color      : wheat;\n    /* margin-left: 24px; */\n}\n\n.length, .score, .snack, .speed {\n    margin-right: 10px;\n}\n"; });

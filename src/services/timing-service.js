@@ -89,17 +89,12 @@ export class TimingService {
         (this.steps % this.speedupInterval == 0) && this.speedUp();
         (this.steps % this.snackInterval == 0) && this.snackService.addSnack();
         this.snakeService.step(grow);
-        this.screenService.fadeArena();
-        this.screenService.drawSnacks(this.snackService.snacks);
-        this.screenService.drawSnake(this.snakeService.snake);
         this.scoreService.update(this.snakeService.snake.segments.length);
     }
 
     dropSnake() {
         this.fallTimerHandle = setInterval(() => {
             this.snakeService.fallDown();
-            this.screenService.fadeArena();
-            this.screenService.drawSnake(this.snakeService.snake);
         }, this.dropInterval);
     }
 

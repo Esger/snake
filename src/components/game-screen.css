@@ -12,10 +12,17 @@ game-Screen {
     background-color: black;
 }
 
-.snackImages, .snakeImages {
-    display : none;
+.arena img {
     position: absolute;
-    top     : 0;
-    left    : 0;
-    z-index : 0;
+}
+
+.arena .segment {
+    transform-origin: 50% 50%;
+    transition      : all .5s;
+}
+
+.arena .snack {
+    width    : 24px;
+    height   : 24px;
+    transform: translate(-4px,-4px);
 }
