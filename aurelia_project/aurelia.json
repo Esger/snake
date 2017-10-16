@@ -138,6 +138,11 @@
                         "main": "jquery.min.js",
                         "exports": "$",
                         "map": "jquery.min.map"
+                    },
+                    {
+                        "name": "aurelia-cookie",
+                        "path": "../node_modules/aurelia-cookie/dist/amd",
+                        "main": "index"
                     }
                 ]
             }

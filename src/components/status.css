@@ -1,15 +1,16 @@
 status {
-    position: absolute;
-    z-index : 2;
-    bottom  : 0;
-    width   : 100vw;
+    position  : absolute;
+    z-index   : 2;
+    bottom    : 0;
+    width     : 100vw;
+    text-align: center;
 }
 
 .statusLine {
     font-size  : 18px;
     line-height: 30px;
     color      : wheat;
-    margin-left: 24px;
+    /* margin-left: 24px; */
 }
 
 .length, .score, .snack, .speed {

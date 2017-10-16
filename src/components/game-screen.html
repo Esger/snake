@@ -1,0 +1,15 @@
+<template>
+    <require from="components/game-screen.css"></require>
+    <div class="snakeImages">
+        <img repeat.for="image of snakeParts"
+             class.bind="image"
+             src="./images/${image}.png">
+    </div>
+    <div class="snackImages">
+        <img repeat.for="image of snackNames"
+             class.bind="image"
+             src="./images/${image}.png">
+    </div>
+    <canvas id="arena"
+            class="arena"></canvas>
+</template>
