@@ -43,43 +43,45 @@ define('environment',["exports"], function (exports) {
   };
 });
 define('main',['exports', './environment'], function (exports, _environment) {
-  'use strict';
+    'use strict';
 
-  Object.defineProperty(exports, "__esModule", {
-    value: true
-  });
-  exports.configure = configure;
-
-  var _environment2 = _interopRequireDefault(_environment);
-
-  function _interopRequireDefault(obj) {
-    return obj && obj.__esModule ? obj : {
-      default: obj
-    };
-  }
-
-  Promise.config({
-    longStackTraces: _environment2.default.debug,
-    warnings: {
-      wForgottenReturn: false
-    }
-  });
-
-  function configure(aurelia) {
-    aurelia.use.standardConfiguration().feature('resources');
-
-    if (_environment2.default.debug) {
-      aurelia.use.developmentLogging();
-    }
-
-    if (_environment2.default.testing) {
-      aurelia.use.plugin('aurelia-testing');
-    }
-
-    aurelia.start().then(function () {
-      return aurelia.setRoot();
+    Object.defineProperty(exports, "__esModule", {
+        value: true
     });
-  }
+    exports.configure = configure;
+
+    var _environment2 = _interopRequireDefault(_environment);
+
+    function _interopRequireDefault(obj) {
+        return obj && obj.__esModule ? obj : {
+            default: obj
+        };
+    }
+
+    Promise.config({
+        longStackTraces: _environment2.default.debug,
+        warnings: {
+            wForgottenReturn: false
+        }
+    });
+
+    function configure(aurelia) {
+        aurelia.use.standardConfiguration().feature('resources');
+
+        aurelia.use.plugin('aurelia-cookie');
+
+        if (_environment2.default.debug) {
+            aurelia.use.developmentLogging();
+        }
+
+        if (_environment2.default.testing) {
+            aurelia.use.plugin('aurelia-testing');
+        }
+
+        aurelia.start().then(function () {
+            return aurelia.setRoot();
+        });
+    }
 });
 define('components/game-screen',['exports', 'aurelia-framework', 'aurelia-event-aggregator', '../services/screen-service', '../services/snake-service', '../services/snack-service'], function (exports, _aureliaFramework, _aureliaEventAggregator, _screenService, _snakeService, _snackService) {
     'use strict';
@@ -220,6 +222,7 @@ define('components/status',['exports', 'aurelia-framework', 'aurelia-event-aggre
 
             this.ea = eventAggregator;
             this.score = 0;
+            this.highScore;
             this.resetVars();
         }
 
@@ -236,7 +239,8 @@ define('components/status',['exports', 'aurelia-framework', 'aurelia-event-aggre
                 _this.resetVars();
             });
             this.ea.subscribe('score', function (response) {
-                _this.score = response;
+                _this.score = response.score;
+                _this.highScore = response.highScore;
             });
             this.ea.subscribe('snack', function (response) {
                 _this.snack = response;
@@ -247,6 +251,10 @@ define('components/status',['exports', 'aurelia-framework', 'aurelia-event-aggre
             this.ea.subscribe('die', function (response) {
                 _this.snack = response;
             });
+        };
+
+        StatusCustomElement.prototype.resetHighscore = function resetHighscore() {
+            this.ea.publish('resetHigh');
         };
 
         StatusCustomElement.prototype.resetVars = function resetVars() {
@@ -262,6 +270,15 @@ define('components/status',['exports', 'aurelia-framework', 'aurelia-event-aggre
 
         return StatusCustomElement;
     }()) || _class);
+});
+define('resources/index',["exports"], function (exports) {
+  "use strict";
+
+  Object.defineProperty(exports, "__esModule", {
+    value: true
+  });
+  exports.configure = configure;
+  function configure(config) {}
 });
 define('services/keystroke-service',['exports', 'aurelia-framework', 'aurelia-event-aggregator'], function (exports, _aureliaFramework, _aureliaEventAggregator) {
     'use strict';
@@ -317,6 +334,88 @@ define('services/keystroke-service',['exports', 'aurelia-framework', 'aurelia-ev
         return KeystrokeService;
     }()) || _class);
 });
+define('services/score-service',['exports', 'aurelia-framework', 'aurelia-event-aggregator', 'aurelia-cookie'], function (exports, _aureliaFramework, _aureliaEventAggregator, _aureliaCookie) {
+    'use strict';
+
+    Object.defineProperty(exports, "__esModule", {
+        value: true
+    });
+    exports.ScoreService = undefined;
+
+    function _classCallCheck(instance, Constructor) {
+        if (!(instance instanceof Constructor)) {
+            throw new TypeError("Cannot call a class as a function");
+        }
+    }
+
+    var _dec, _class;
+
+    var ScoreService = exports.ScoreService = (_dec = (0, _aureliaFramework.inject)(_aureliaEventAggregator.EventAggregator), _dec(_class = function () {
+        function ScoreService(eventAggregator) {
+            var _this = this;
+
+            _classCallCheck(this, ScoreService);
+
+            this.ea = eventAggregator;
+
+            this.multiplier = 1;
+            this.score = 0;
+            this.highScore = this.readHighscore();
+            this.ea.subscribe('gameOver', function (response) {
+                _this.saveHighscore();
+            });
+            this.ea.subscribe('resetHigh', function (response) {
+                _this.resetHighscore();
+            });
+        }
+
+        ScoreService.prototype.update = function update(amount) {
+            amount && (this.score += amount * this.multiplier);
+            this.highScore = Math.max(this.score, this.highScore);
+            this.ea.publish('score', {
+                score: this.score,
+                highScore: this.highScore
+            });
+        };
+
+        ScoreService.prototype.setMultiplier = function setMultiplier(factor) {
+            if (factor) {
+                this.multiplier = factor;
+            } else {
+                this.multiplier = 10;
+            }
+        };
+
+        ScoreService.prototype.resetMultiplier = function resetMultiplier() {
+            this.multiplier = 1;
+        };
+
+        ScoreService.prototype.saveHighscore = function saveHighscore() {
+            _aureliaCookie.AureliaCookie.set('highScore', this.highScore, {
+                expiry: -1
+            });
+        };
+
+        ScoreService.prototype.readHighscore = function readHighscore() {
+            var hs = _aureliaCookie.AureliaCookie.get('highScore');
+            if (hs > 0) {
+                return hs;
+            }
+            return 0;
+        };
+
+        ScoreService.prototype.resetHighscore = function resetHighscore() {
+            this.highScore = 0;
+            this.saveHighscore();
+        };
+
+        ScoreService.prototype.initScore = function initScore() {
+            this.score = 0;
+        };
+
+        return ScoreService;
+    }()) || _class);
+});
 define('services/screen-service',['exports', 'aurelia-framework', 'aurelia-event-aggregator'], function (exports, _aureliaFramework, _aureliaEventAggregator) {
     'use strict';
 
@@ -362,9 +461,7 @@ define('services/screen-service',['exports', 'aurelia-framework', 'aurelia-event
             for (var i = 0; i < snacks.length; i++) {
                 var snack = snacks[i];
                 this.ctx.save();
-
                 this.ctx.translate(snack.position[0] - this.halfSnackSize, snack.position[1] - this.halfSnackSize);
-
                 this.ctx.drawImage(this.snackImages[snack.nameIndex], 0, 0, this.snackSize, this.snackSize);
                 this.ctx.restore();
             }
@@ -440,10 +537,10 @@ define('services/snack-service',['exports', 'aurelia-framework', 'aurelia-event-
             return pos1[0] == pos2[0] && pos1[1] == pos2[1];
         };
 
-        SnackService.prototype.hitSnack = function hitSnack(head) {
+        SnackService.prototype.hitSnack = function hitSnack(head, neck) {
             for (var i = 0; i < this.snacks.length - 1; i++) {
                 var snack = this.snacks[i];
-                if (this.samePosition(snack.position, head)) {
+                if (this.samePosition(snack.position, head) || this.samePosition(snack.position, neck)) {
                     this.removeSnack(i);
                     return snack.name;
                 }
@@ -508,34 +605,34 @@ define('services/snake-service',['exports', 'aurelia-framework', 'aurelia-event-
                 },
                 axe: function axe() {
                     _this.cutSnake();
-                    _this.ea.publish('snack', 'Axe: you lost half of your length');
+                    _this.ea.publish('snack', 'Axe: lost half of yourself');
                 },
                 beer: function beer() {
-                    _this.ea.publish('snack', 'Beer: growing slower for 15 seconds');
+                    _this.ea.publish('snack', 'Beer: grow slower for 15 seconds');
                 },
                 bunny: function bunny() {
-                    _this.ea.publish('snack', 'Bunny: running faster for 15 seconds');
+                    _this.ea.publish('snack', 'Bunny: run faster for 15 seconds');
                 },
                 diamond: function diamond() {
-                    _this.ea.publish('snack', 'Diamond: you scored 10000 points');
+                    _this.ea.publish('snack', 'Diamond: 10000 points');
                 },
                 gold: function gold() {
-                    _this.ea.publish('snack', 'Gold: you scored 1000 points');
+                    _this.ea.publish('snack', 'Gold: 1000 points');
                 },
                 ruby: function ruby() {
-                    _this.ea.publish('snack', 'Ruby: score multiplier for 15 seconds');
+                    _this.ea.publish('snack', 'Ruby: score &times; 10 for 15 seconds');
                 },
                 skull: function skull() {
                     _this.ea.publish('snack', 'Skull: you die');
                 },
                 snail: function snail() {
-                    _this.ea.publish('snack', 'Snail: running slower for 15 seconds');
+                    _this.ea.publish('snack', 'Snail: run slower for 15 seconds');
                 },
                 trash: function trash() {
                     _this.ea.publish('snack', 'Trash: trash all extra&rsquo;s');
                 },
                 viagra: function viagra() {
-                    _this.ea.publish('snack', 'Viagra: growing harder for 15 seconds');
+                    _this.ea.publish('snack', 'Viagra: grow harder for 15 seconds');
                 }
             };
             this.setSubscribers();
@@ -549,12 +646,14 @@ define('services/snake-service',['exports', 'aurelia-framework', 'aurelia-event-
 
         SnakeService.prototype.advanceHead = function advanceHead() {
             var head = this.snake.segments[0].slice();
+            var neck = head;
+            this.snake.segments.length > 1 && (neck = this.snake.segments[1].slice());
             head[0] += this.snake.directions[this.snake.direction][0] * this.snake.segmentSize;
             head[1] += this.snake.directions[this.snake.direction][1] * this.snake.segmentSize;
             this.snake.segments.unshift(head);
             this.hitWall();
             this.hitSnake();
-            var method = this.snackService.hitSnack(head).toLowerCase();
+            var method = this.snackService.hitSnack(head, neck).toLowerCase();
             this.snackMethods[method]();
         };
 
@@ -583,7 +682,7 @@ define('services/snake-service',['exports', 'aurelia-framework', 'aurelia-event-
 
         SnakeService.prototype.hitWall = function hitWall() {
             var head = this.snake.segments[0];
-            var wallHit = head[0] >= this.screenService.limits.right - this.halfSprite || head[0] <= this.screenService.limits.left + this.halfSprite || head[1] >= this.screenService.limits.bottom - this.halfSprite || head[1] <= this.screenService.limits.top + this.halfSprite;
+            var wallHit = head[0] > this.screenService.limits.right - this.halfSprite || head[0] < this.screenService.limits.left + this.halfSprite || head[1] > this.screenService.limits.bottom - this.halfSprite || head[1] < this.screenService.limits.top + this.halfSprite;
             wallHit && this.ea.publish('die', 'You hit a wall');
         };
 
@@ -692,8 +791,9 @@ define('services/timing-service',['exports', 'aurelia-framework', 'aurelia-event
             this.baseGrowInterval = 10;
             this.baseScoreInterval = 10;
             this.baseSnackInterval = 10;
-            this.baseSpeedupInterval = 50;
-            this.baseStepInterval = 400;
+            this.baseSpeedupInterval = 100;
+            this.maxStepInterval = 400;
+            this.minStepInterval = 10;
             this.dropInterval = 0;
             this.snackDuration = 15000;
 
@@ -736,7 +836,7 @@ define('services/timing-service',['exports', 'aurelia-framework', 'aurelia-event
         TimingService.prototype.startGame = function startGame() {
             this.resetIntervals();
             this.scoreService.initScore();
-            this.snakeService.initSnake(1);
+            this.snakeService.initSnake();
             this.snackService.initSnacks();
             this.crawling = true;
             this.resumeGame();
@@ -774,7 +874,7 @@ define('services/timing-service',['exports', 'aurelia-framework', 'aurelia-event
         };
 
         TimingService.prototype.speedUp = function speedUp() {
-            if (this.stepInterval > 40) {
+            if (this.stepInterval > this.minStepInterval) {
                 this.speed += 1;
                 this.clearTimedEvents();
                 this.stepInterval -= 40;
@@ -784,7 +884,7 @@ define('services/timing-service',['exports', 'aurelia-framework', 'aurelia-event
         };
 
         TimingService.prototype.slowDown = function slowDown() {
-            if (this.baseStepInterval < 7) {
+            if (this.stepInterval < this.maxStepInterval) {
                 this.speed -= 1;
                 this.clearTimedEvents();
                 this.stepInterval += 40;
@@ -796,9 +896,9 @@ define('services/timing-service',['exports', 'aurelia-framework', 'aurelia-event
         TimingService.prototype.growSlower = function growSlower() {
             var _this4 = this;
 
-            this.growInterval += 2;
+            this.growInterval += 5;
             setTimeout(function () {
-                _this4.growInterval -= 2;
+                _this4.growInterval -= 5;
             }, this.snackDuration);
         };
 
@@ -806,9 +906,9 @@ define('services/timing-service',['exports', 'aurelia-framework', 'aurelia-event
             var _this5 = this;
 
             if (this.growInterval > this.baseGrowInterval) {
-                this.growInterval -= 2;
+                this.growInterval -= 5;
                 setTimeout(function () {
-                    _this5.growInterval += 2;
+                    _this5.growInterval += 5;
                 }, this.snackDuration);
             }
         };
@@ -879,7 +979,7 @@ define('services/timing-service',['exports', 'aurelia-framework', 'aurelia-event
         };
 
         TimingService.prototype.resetIntervals = function resetIntervals() {
-            this.stepInterval = this.baseStepInterval;
+            this.stepInterval = this.maxStepInterval;
             this.scoreInterval = this.baseSoreInterval;
             this.growInterval = this.baseGrowInterval;
             this.speedupInterval = this.baseSpeedupInterval;
@@ -890,71 +990,110 @@ define('services/timing-service',['exports', 'aurelia-framework', 'aurelia-event
         return TimingService;
     }()) || _class);
 });
-define('resources/index',["exports"], function (exports) {
-  "use strict";
-
-  Object.defineProperty(exports, "__esModule", {
-    value: true
-  });
-  exports.configure = configure;
-  function configure(config) {}
-});
-define('services/score-service',['exports', 'aurelia-framework', 'aurelia-event-aggregator'], function (exports, _aureliaFramework, _aureliaEventAggregator) {
-    'use strict';
-
-    Object.defineProperty(exports, "__esModule", {
-        value: true
-    });
-    exports.ScoreService = undefined;
-
-    function _classCallCheck(instance, Constructor) {
-        if (!(instance instanceof Constructor)) {
-            throw new TypeError("Cannot call a class as a function");
+define('aurelia-cookie/aurelia-cookie',["require", "exports"], function (require, exports) {
+    "use strict";
+    var AureliaCookie = (function () {
+        function AureliaCookie() {
         }
-    }
-
-    var _dec, _class;
-
-    var ScoreService = exports.ScoreService = (_dec = (0, _aureliaFramework.inject)(_aureliaEventAggregator.EventAggregator), _dec(_class = function () {
-        function ScoreService(eventAggregator, screenService) {
-            _classCallCheck(this, ScoreService);
-
-            this.ea = eventAggregator;
-            this.multiplier = 1;
-            this.score = 0;
-        }
-
-        ScoreService.prototype.update = function update(amount) {
-            amount && (this.score += amount * this.multiplier);
-            this.ea.publish('score', this.score);
+        /**
+        *
+        * Get a cookie by its name
+        */
+        AureliaCookie.get = function (name) {
+            var cookies = this.all();
+            if (cookies && cookies[name]) {
+                return cookies[name];
+            }
+            return null;
         };
-
-        ScoreService.prototype.setMultiplier = function setMultiplier(factor) {
-            if (factor) {
-                this.multiplier = factor;
-            } else {
-                this.multiplier = 10;
+        /**
+        * Set a cookie
+        */
+        AureliaCookie.set = function (name, value, options) {
+            var str = this.encode(name) + "=" + this.encode(value);
+            if (value === null) {
+                options.expiry = -1;
+            }
+            /**
+            * Expiry date in hours
+            */
+            if (options.expiry >= 0 && !options.expires) {
+                var expires = new Date();
+                expires.setHours(expires.getHours() + options.expiry);
+                options.expires = expires;
+            }
+            if (options.path) {
+                str += "; path=" + options.path;
+            }
+            if (options.domain) {
+                str += "; domain=" + options.domain;
+            }
+            if (options.expires) {
+                str += "; expires=" + options.expires.toUTCString();
+            }
+            if (options.secure) {
+                str += '; secure';
+            }
+            document.cookie = str;
+        };
+        /**
+        * Deletes a cookie by setting its expiry date in the past
+        */
+        AureliaCookie.delete = function (name, domain) {
+            if (domain === void 0) { domain = null; }
+            var cookieString = name + " =;expires=Thu, 01 Jan 1970 00:00:01 GMT;";
+            if (domain) {
+                cookieString += "; domain=" + domain;
+            }
+            document.cookie = cookieString;
+        };
+        /**
+        * Get all set cookies and return an array
+        */
+        AureliaCookie.all = function () {
+            return this.parse(document.cookie);
+        };
+        AureliaCookie.parse = function (str) {
+            var obj = {};
+            var pairs = str.split(/ *; */);
+            var pair;
+            if (pairs[0] === '') {
+                return obj;
+            }
+            for (var i = 0; i < pairs.length; ++i) {
+                pair = pairs[i].split('=');
+                obj[this.decode(pair[0])] = this.decode(pair[1]);
+            }
+            return obj;
+        };
+        AureliaCookie.encode = function (value) {
+            try {
+                return encodeURIComponent(value);
+            }
+            catch (e) {
+                return null;
             }
         };
-
-        ScoreService.prototype.resetMultiplier = function resetMultiplier() {
-            this.multiplier = 1;
+        AureliaCookie.decode = function (value) {
+            try {
+                return decodeURIComponent(value);
+            }
+            catch (e) {
+                return null;
+            }
         };
-
-        ScoreService.prototype.initScore = function initScore() {
-            this.score = 0;
-        };
-
-        return ScoreService;
-    }()) || _class);
+        return AureliaCookie;
+    }());
+    exports.AureliaCookie = AureliaCookie;
 });
+
 define('text!app.html', ['module'], function(module) { module.exports = "<template>\n    <require from=\"reset.css\"></require>\n    <require from=\"app.css\"></require>\n    <require from=\"components/game-screen\"></require>\n    <require from=\"components/restart-overlay\"></require>\n    <require from=\"components/status\"></require>\n    <h1 class=\"gameTitle\">${message}</h1>\n    <game-screen></game-screen>\n    <restart-overlay></restart-overlay>\n    <status></status>\n</template>"; });
-define('text!app.css', ['module'], function(module) { module.exports = "body {\n    position        : relative;\n    user-select     : none;\n    overflow        : hidden;\n    font-family     : 'Trebuchet MS', sans-serif;\n    background-color: crimson;\n    height          : 100vh;\n}\n\n.gameTitle {\n    position      : absolute;\n    z-index       : 2;\n    top           : 0;\n    width         : 100vw;\n    letter-spacing: 1px;\n    font-size     : 20px;\n    line-height   : 24px;\n    text-align    : center;\n    color         : whitesmoke;\n}\n"; });
-define('text!components/game-screen.html', ['module'], function(module) { module.exports = "<template>\n    <require from=\"components/game-screen.css\"></require>\n    <div class=\"snakeImages\">\n        <img repeat.for=\"image of snakeParts\"\n             class.bind=\"image\"\n             src=\"/images/${image}.png\">\n    </div>\n    <div class=\"snackImages\">\n        <img repeat.for=\"image of snackNames\"\n             class.bind=\"image\"\n             src=\"/images/${image}.png\">\n    </div>\n    <canvas id=\"arena\"\n            class=\"arena\"></canvas>\n</template>"; });
+define('text!app.css', ['module'], function(module) { module.exports = "body {\n    position         : relative;\n    user-select      : none;\n    overflow         : hidden;\n    font-family      : 'Trebuchet MS', sans-serif;\n    background-color : crimson;\n    background-image : url(\"./images/border.png\");\n    background-repeat: no-repeat;\n    background-size  : 100% 100%;\n    height           : 100vh;\n}\n\n.gameTitle {\n    position      : absolute;\n    z-index       : 2;\n    top           : 0;\n    width         : 100vw;\n    letter-spacing: 1px;\n    font-size     : 20px;\n    line-height   : 24px;\n    text-align    : center;\n    color         : whitesmoke;\n}\n"; });
+define('text!components/game-screen.html', ['module'], function(module) { module.exports = "<template>\n    <require from=\"components/game-screen.css\"></require>\n    <div class=\"snakeImages\">\n        <img repeat.for=\"image of snakeParts\"\n             class.bind=\"image\"\n             src=\"./images/${image}.png\">\n    </div>\n    <div class=\"snackImages\">\n        <img repeat.for=\"image of snackNames\"\n             class.bind=\"image\"\n             src=\"./images/${image}.png\">\n    </div>\n    <canvas id=\"arena\"\n            class=\"arena\"></canvas>\n</template>"; });
 define('text!reset.css', ['module'], function(module) { module.exports = "/* http://meyerweb.com/eric/tools/css/reset/ \n   v2.0 | 20110126\n   License: none (public domain)\n*/\n\na, abbr, acronym, address, applet, article, aside, audio, b, big, blockquote, body, canvas, caption, center, cite, code, dd, del, details, dfn, div, dl, dt, em, embed, fieldset, figcaption, figure, footer, form, h1, h2, h3, h4, h5, h6, header, hgroup, html, i, iframe, img, ins, kbd, label, legend, li, mark, menu, nav, object, ol, output, p, pre, q, ruby, s, samp, section, small, span, strike, strong, sub, summary, sup, table, tbody, td, tfoot, th, thead, time, tr, tt, u, ul, var, video {\n    margin        : 0;\n    padding       : 0;\n    border        : 0;\n    font-size     : 100%;\n    font          : inherit;\n    vertical-align: baseline;\n}\n/* HTML5 display-role reset for older browsers */\narticle, aside, details, figcaption, figure, footer, header, hgroup, menu, nav, section {\n    display: block;\n}\n\nbody {\n    line-height: 1;\n}\n\nol, ul {\n    list-style: none;\n}\n\nblockquote, q {\n    quotes: none;\n}\n\nblockquote:after, blockquote:before, q:after, q:before {\n    content: '';\n    content: none;\n}\n\ntable {\n    border-collapse: collapse;\n    border-spacing : 0;\n}\n"; });
 define('text!components/restart-overlay.html', ['module'], function(module) { module.exports = "<template class=\"${showOverlay || pause ? 'show' : ''}\"\n          click.delegate=\"start()\">\n    <require from=\"components/restart-overlay.css\"></require>\n    <h2 class=\"restart ${!pause && !firstGame ? 'show' : ''}\">Game over</h2>\n    <h2 class=\"restart ${!pause ? 'show' : ''}\">Click or tap or &lt;enter&gt; to start new game</h2>\n    <h2 class=\"paused ${pause ? 'show' : ''}\">Game paused</h2>\n    <h2 class=\"paused ${pause ? 'show' : ''}\">Press space to continue</h2>\n\n</template>"; });
 define('text!components/game-screen.css', ['module'], function(module) { module.exports = "game-Screen {\n    display        : flex;\n    flex-direction : column;\n    justify-content: center;\n    align-items    : center;\n    width          : 100vw;\n    height         : 100vh;\n    position       : relative;\n}\n\n.arena {\n    background-color: black;\n}\n\n.snackImages, .snakeImages {\n    display : none;\n    position: absolute;\n    top     : 0;\n    left    : 0;\n    z-index : 0;\n}\n"; });
-define('text!components/status.html', ['module'], function(module) { module.exports = "<template>\n    <require from=\"components/status.css\"></require>\n    <h2 class=\"statusLine\">\n        <span>Speed:</span><span class=\"speed\">${speed}</span>\n        <span>Length:</span><span class=\"length\">${length}</span>\n        <span>Score:</span><span class=\"score\">${score}</span>\n        <span class=\"snack\"\n              innerhtml.bind=\"snack\"></span>\n    </h2>\n</template>"; });
-define('text!components/restart-overlay.css', ['module'], function(module) { module.exports = "restart-overlay {\n    position        : absolute;\n    z-index         : 10;\n    top             : 0;\n    left            : 0;\n    display         : flex;\n    flex-direction  : column;\n    justify-content : space-around;\n    align-items     : center;\n    width           : 100vw;\n    height          : 100vh;\n    background-color: rgba(0,0,0,.7);\n    opacity         : 0;\n    pointer-events  : none;\n    transition      : all .2s;\n}\n\nrestart-overlay.show {\n    opacity       : 1;\n    pointer-events: all;\n}\n\nrestart-overlay h2 {\n    font-size  : 5vh;\n    line-height: 5vh;\n    color      : whitesmoke;\n}\n\n.paused, .restart {\n    display: none;\n}\n\n.paused.show, .restart.show {\n    display: block;\n}\n"; });
+define('text!components/status.html', ['module'], function(module) { module.exports = "<template>\n    <require from=\"components/status.css\"></require>\n    <h2 class=\"statusLine\">\n        <span>Speed:</span><span class=\"speed\">${speed}</span>\n        <span>Length:</span><span class=\"length\">${length}</span>\n        <span>Score:</span><span class=\"score\">${score}</span>\n        <span click.delegate=\"resetHighscore()\"><span>High:</span><span class=\"high\">${highScore}</span></span>\n        <span class=\"snack\"\n              innerhtml.bind=\"snack\"></span>\n    </h2>\n</template>"; });
+define('text!components/restart-overlay.css', ['module'], function(module) { module.exports = "restart-overlay {\n    position        : absolute;\n    z-index         : 10;\n    top             : 0;\n    left            : 0;\n    display         : flex;\n    flex-direction  : column;\n    justify-content : space-around;\n    align-items     : center;\n    width           : 100vw;\n    height          : 100vh;\n    background-color: rgba(0,0,0,.7);\n    opacity         : 0;\n    pointer-events  : none;\n    transition      : all .2s;\n}\n\nrestart-overlay.show {\n    opacity       : 1;\n    pointer-events: all;\n}\n\nrestart-overlay h2 {\n    font-size  : 4vmin;\n    line-height: 4vmin;\n    color      : whitesmoke;\n}\n\n.paused, .restart {\n    display: none;\n}\n\n.paused.show, .restart.show {\n    display: block;\n}\n"; });
 define('text!components/status.css', ['module'], function(module) { module.exports = "status {\n    position  : absolute;\n    z-index   : 2;\n    bottom    : 0;\n    width     : 100vw;\n    text-align: center;\n}\n\n.statusLine {\n    font-size  : 18px;\n    line-height: 30px;\n    color      : wheat;\n    /* margin-left: 24px; */\n}\n\n.length, .score, .snack, .speed {\n    margin-right: 10px;\n}\n"; });
 //# sourceMappingURL=app-bundle.js.map

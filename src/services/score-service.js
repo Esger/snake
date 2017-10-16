@@ -1,18 +1,28 @@
 import { inject } from 'aurelia-framework';
 import { EventAggregator } from 'aurelia-event-aggregator';
+import { AureliaCookie } from 'aurelia-cookie';
 
 @inject(EventAggregator)
 
 export class ScoreService {
-    constructor(eventAggregator, screenService) {
+
+    constructor(eventAggregator) {
         this.ea = eventAggregator;
+        // this.cookie = aureliaCookie;
         this.multiplier = 1;
         this.score = 0;
+        this.highScore = this.readHighscore();
+        this.ea.subscribe('gameOver', response => { this.saveHighscore() });
+        this.ea.subscribe('resetHigh', response => { this.resetHighscore() });
     }
 
     update(amount) {
         (amount) && (this.score += amount * this.multiplier);
-        this.ea.publish('score', this.score);
+        this.highScore = Math.max(this.score, this.highScore);
+        this.ea.publish('score', {
+            score: this.score,
+            highScore: this.highScore
+        });
     }
 
     setMultiplier(factor) {
@@ -25,6 +35,25 @@ export class ScoreService {
 
     resetMultiplier() {
         this.multiplier = 1;
+    }
+
+    saveHighscore() {
+        AureliaCookie.set('highScore', this.highScore, {
+            expiry: -1,
+        });
+    }
+
+    readHighscore() {
+        let hs = AureliaCookie.get('highScore');
+        if (hs > 0) {
+            return hs;
+        }
+        return 0;
+    }
+
+    resetHighscore() {
+        this.highScore = 0;
+        this.saveHighscore();
     }
 
     initScore() {

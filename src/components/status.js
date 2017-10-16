@@ -12,6 +12,7 @@ export class StatusCustomElement {
     constructor(eventAggregator) {
         this.ea = eventAggregator;
         this.score = 0;
+        this.highScore;
         this.resetVars();
     }
 
@@ -26,7 +27,8 @@ export class StatusCustomElement {
             this.resetVars();
         });
         this.ea.subscribe('score', response => {
-            this.score = response;
+            this.score = response.score;
+            this.highScore = response.highScore;
         });
         this.ea.subscribe('snack', response => {
             this.snack = response;
@@ -38,6 +40,10 @@ export class StatusCustomElement {
             this.snack = response;
         });
 
+    }
+
+    resetHighscore() {
+        this.ea.publish('resetHigh');
     }
 
     resetVars() {

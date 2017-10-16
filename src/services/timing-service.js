@@ -25,8 +25,9 @@ export class TimingService {
         this.baseGrowInterval = 10;
         this.baseScoreInterval = 10;
         this.baseSnackInterval = 10;
-        this.baseSpeedupInterval = 50;
-        this.baseStepInterval = 400;
+        this.baseSpeedupInterval = 100;
+        this.maxStepInterval = 400;
+        this.minStepInterval = 10;
         this.dropInterval = 0;
         this.snackDuration = 15000;
 
@@ -69,7 +70,7 @@ export class TimingService {
     startGame() {
         this.resetIntervals();
         this.scoreService.initScore();
-        this.snakeService.initSnake(1);
+        this.snakeService.initSnake();
         this.snackService.initSnacks();
         this.crawling = true;
         this.resumeGame();
@@ -103,7 +104,7 @@ export class TimingService {
     }
 
     speedUp() {
-        if (this.stepInterval > 40) {
+        if (this.stepInterval > this.minStepInterval) {
             this.speed += 1;
             this.clearTimedEvents();
             this.stepInterval -= 40;
@@ -113,7 +114,7 @@ export class TimingService {
     }
 
     slowDown() {
-        if (this.baseStepInterval < 7) {
+        if (this.stepInterval < this.maxStepInterval) {
             this.speed -= 1;
             this.clearTimedEvents();
             this.stepInterval += 40;
@@ -123,17 +124,17 @@ export class TimingService {
     }
 
     growSlower() {
-        this.growInterval += 2;
+        this.growInterval += 5;
         setTimeout(() => {
-            this.growInterval -= 2;
+            this.growInterval -= 5;
         }, this.snackDuration);
     }
 
     growHarder() {
         if (this.growInterval > this.baseGrowInterval) {
-            this.growInterval -= 2;
+            this.growInterval -= 5;
             setTimeout(() => {
-                this.growInterval += 2;
+                this.growInterval += 5;
             }, this.snackDuration);
         }
     }
@@ -195,11 +196,10 @@ export class TimingService {
             let method = response.split(':')[0].toLowerCase();
             this.methods[method]();
         });
-
     }
 
     resetIntervals() {
-        this.stepInterval = this.baseStepInterval;
+        this.stepInterval = this.maxStepInterval;
         this.scoreInterval = this.baseSoreInterval;
         this.growInterval = this.baseGrowInterval;
         this.speedupInterval = this.baseSpeedupInterval;

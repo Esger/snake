@@ -33,34 +33,34 @@ export class SnakeService {
             },
             axe: () => {
                 this.cutSnake();
-                this.ea.publish('snack', 'Axe: you lost half of your length');
+                this.ea.publish('snack', 'Axe: lost half of yourself');
             },
             beer: () => {
-                this.ea.publish('snack', 'Beer: growing slower for 15 seconds');
+                this.ea.publish('snack', 'Beer: grow slower for 15 seconds');
             },
             bunny: () => {
-                this.ea.publish('snack', 'Bunny: running faster for 15 seconds');
+                this.ea.publish('snack', 'Bunny: run faster for 15 seconds');
             },
             diamond: () => {
-                this.ea.publish('snack', 'Diamond: you scored 10000 points');
+                this.ea.publish('snack', 'Diamond: 10000 points');
             },
             gold: () => {
-                this.ea.publish('snack', 'Gold: you scored 1000 points');
+                this.ea.publish('snack', 'Gold: 1000 points');
             },
             ruby: () => {
-                this.ea.publish('snack', 'Ruby: score multiplier for 15 seconds');
+                this.ea.publish('snack', 'Ruby: score &times; 10 for 15 seconds');
             },
             skull: () => {
                 this.ea.publish('snack', 'Skull: you die');
             },
             snail: () => {
-                this.ea.publish('snack', 'Snail: running slower for 15 seconds');
+                this.ea.publish('snack', 'Snail: run slower for 15 seconds');
             },
             trash: () => {
                 this.ea.publish('snack', 'Trash: trash all extra&rsquo;s');
             },
             viagra: () => {
-                this.ea.publish('snack', 'Viagra: growing harder for 15 seconds');
+                this.ea.publish('snack', 'Viagra: grow harder for 15 seconds');
             }
         }
         this.setSubscribers();
@@ -75,12 +75,14 @@ export class SnakeService {
 
     advanceHead() {
         let head = this.snake.segments[0].slice();
+        let neck = head;
+        (this.snake.segments.length > 1) && (neck = this.snake.segments[1].slice());
         head[0] += this.snake.directions[this.snake.direction][0] * this.snake.segmentSize;
         head[1] += this.snake.directions[this.snake.direction][1] * this.snake.segmentSize;
         this.snake.segments.unshift(head);
         this.hitWall();
         this.hitSnake();
-        let method = this.snackService.hitSnack(head).toLowerCase();
+        let method = this.snackService.hitSnack(head, neck).toLowerCase();
         this.snackMethods[method]();
     }
 
@@ -110,10 +112,10 @@ export class SnakeService {
     hitWall() {
         let head = this.snake.segments[0];
         let wallHit =
-            head[0] >= this.screenService.limits.right - this.halfSprite ||
-            head[0] <= this.screenService.limits.left + this.halfSprite ||
-            head[1] >= this.screenService.limits.bottom - this.halfSprite ||
-            head[1] <= this.screenService.limits.top + this.halfSprite;
+            head[0] > this.screenService.limits.right - this.halfSprite ||
+            head[0] < this.screenService.limits.left + this.halfSprite ||
+            head[1] > this.screenService.limits.bottom - this.halfSprite ||
+            head[1] < this.screenService.limits.top + this.halfSprite;
         wallHit && (this.ea.publish('die', 'You hit a wall'));
     }
 
