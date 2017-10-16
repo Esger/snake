@@ -21,8 +21,8 @@ restart-overlay.show {
 }
 
 restart-overlay h2 {
-    font-size  : 5vh;
-    line-height: 5vh;
+    font-size  : 4vmin;
+    line-height: 4vmin;
     color      : whitesmoke;
 }
 
