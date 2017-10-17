@@ -19,7 +19,7 @@ export class ScreenService {
     }
 
     roundToSpriteSize(size) {
-        return Math.floor(size / this.spriteSize) * this.spriteSize + this.halfSprite;
+        return Math.floor(size / this.spriteSize) * this.spriteSize;
     }
 
     setDomVars($arena) {

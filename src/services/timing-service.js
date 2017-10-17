@@ -28,7 +28,7 @@ export class TimingService {
         this.baseSpeedupInterval = 100;
         this.maxStepInterval = 400;
         this.minStepInterval = 10;
-        this.dropInterval = 0;
+        this.dropInterval = 10;
         this.snackDuration = 15000;
 
         this.methods = {

@@ -103,19 +103,19 @@ export class SnakeService {
                     this.snake.deadSegments.push(i);
                 }
             }
-            if (this.snake.deadSegments.length >= this.snake.segments.length) {
-                this.ea.publish('gameOver');
-            }
+        }
+        if (this.snake.deadSegments.length >= this.snake.segments.length) {
+            this.ea.publish('gameOver');
         }
     }
 
     hitWall() {
         let head = this.snake.segments[0];
         let wallHit =
-            head[0] > this.screenService.limits.right - this.halfSprite ||
-            head[0] < this.screenService.limits.left + this.halfSprite ||
-            head[1] > this.screenService.limits.bottom - this.halfSprite ||
-            head[1] < this.screenService.limits.top + this.halfSprite;
+            head[0] > this.screenService.limits.right ||
+            head[0] < this.screenService.limits.left ||
+            head[1] > this.screenService.limits.bottom ||
+            head[1] < this.screenService.limits.top;
         wallHit && (this.ea.publish('die', 'You hit a wall'));
     }
 
