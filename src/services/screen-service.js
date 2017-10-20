@@ -16,6 +16,15 @@ export class ScreenService {
         this.snackSize = 24;
         this.halfSnackSize = this.snackSize / 2;
         this.canvasCenter = {};
+        this.animationTime;
+    }
+
+    setAnimationTime(time) {
+        this.animationTime = time;
+    }
+
+    getAnimationTime() {
+        return this.animationTime;
     }
 
     roundToSpriteSize(size) {

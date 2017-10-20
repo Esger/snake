@@ -18,11 +18,11 @@ export class SnakeService {
         this.snake = {
             direction: 0,
             directions: [
-                [1, 0],
-                [0, 1],
-                [-1, 0],
-                [0, -1],
-                [0, 0]
+                [[1, 0], [0, 1, 0, -1]],
+                [[0, 1], [-1, 0, 1, 0]],
+                [[-1, 0], [0, -1, 0, 1]],
+                [[0, -1], [1, 0, -1, 0]],
+                [[0, 0], [0, 0, 0, 0]]
             ],
             segments: [],
             deadSegments: []
@@ -66,24 +66,31 @@ export class SnakeService {
         this.setSubscribers();
     }
 
+    mod(m, n) {
+        return ((m % n) + n) % n;
+    }
+
     step(grow) {
         // limit the rate at which turns are accepted
         (this.snake.turnSteps > 0) && this.snake.turnSteps--;
-        this.advanceHead();
-        (!grow) && (this.snake.segments.pop());
-    }
-
-    advanceHead() {
-        let head = this.snake.segments[0].slice();
-        let neck = head;
-        (this.snake.segments.length > 1) && (neck = this.snake.segments[1].slice());
-        head[0] += this.snake.directions[this.snake.direction][0] * this.snake.segmentSize;
-        head[1] += this.snake.directions[this.snake.direction][1] * this.snake.segmentSize;
-        this.snake.segments.unshift(head);
+        let tail = this.snake.segments[this.snake.segments.length - 1];
+        let newTail = {};
+        newTail.x = tail.x;
+        newTail.y = tail.y;
+        for (let i = this.snake.segments.length - 1; i > 0; i -= 1) {
+            this.snake.segments[i].x = this.snake.segments[i - 1].x;
+            this.snake.segments[i].y = this.snake.segments[i - 1].y;
+        }
+        this.snake.segments[0].x += this.snake.directions[this.mod(this.snake.direction, 4)][0][0] * this.snake.segmentSize;
+        this.snake.segments[0].y += this.snake.directions[this.mod(this.snake.direction, 4)][0][1] * this.snake.segmentSize;
         this.hitWall();
         this.hitSnake();
+        let head = this.snake.segments[0];
+        let neck = head;
+        (this.snake.segments.length > 1) && (neck = this.snake.segments[1]);
         let method = this.snackService.hitSnack(head, neck).toLowerCase();
         this.snackMethods[method]();
+        (grow) && (this.snake.segments.push(newTail));
     }
 
     cutSnake() {
@@ -96,9 +103,9 @@ export class SnakeService {
         for (let i = 0; i < this.snake.segments.length; i++) {
             if (this.snake.deadSegments.indexOf(i) < 0) {
                 let segment = this.snake.segments[i];
-                let newY = (segment[1] + 1) * 1.05;
+                let newY = (segment.y + 1) * 1.05;
                 if (newY <= this.screenService.limits.bottom) {
-                    segment[1] = newY;
+                    segment.y = newY;
                 } else {
                     this.snake.deadSegments.push(i);
                 }
@@ -112,10 +119,10 @@ export class SnakeService {
     hitWall() {
         let head = this.snake.segments[0];
         let wallHit =
-            head[0] > this.screenService.limits.right ||
-            head[0] < this.screenService.limits.left ||
-            head[1] > this.screenService.limits.bottom ||
-            head[1] < this.screenService.limits.top;
+            head.x > this.screenService.limits.right ||
+            head.x < this.screenService.limits.left ||
+            head.y > this.screenService.limits.bottom ||
+            head.y < this.screenService.limits.top;
         wallHit && (this.ea.publish('die', 'You hit a wall'));
     }
 
@@ -132,26 +139,23 @@ export class SnakeService {
     }
 
     samePosition(pos1, pos2) {
-        return pos1[0] == pos2[0] && pos1[1] == pos2[1];
+        return pos1.x == pos2.x && pos1.y == pos2.y;
     }
 
     setSubscribers() {
         let direction = 0;
+        let newDirection = 0;
+        let directions = {
+            'ArrowRight': 0,
+            'ArrowDown': 1,
+            'ArrowLeft': 2,
+            'ArrowUp': 3
+        }
         this.ea.subscribe('keyPressed', response => {
             if (response.startsWith('Arrow') && this.snake.turnSteps == 0) {
                 this.snake.turnSteps = 1;
-                switch (response) {
-                    case 'ArrowRight': direction = 0;
-                        break;
-                    case 'ArrowDown': direction = 1;
-                        break;
-                    case 'ArrowLeft': direction = 2;
-                        break;
-                    case 'ArrowUp': direction = 3;
-                        break;
-                }
-                // prevent going in opposite direction
-                (((direction + 2) % 4) !== this.snake.direction) && (this.snake.direction = direction);
+                let directionChange = this.snake.directions[this.mod(this.snake.direction, 4)][1][directions[response]];
+                this.snake.direction += directionChange;
             }
         });
     }
@@ -173,7 +177,7 @@ export class SnakeService {
         this.snake.stepSize = 16;
         this.snake.segments = [];
         this.snake.turnSteps = 0;
-        let segment = [this.center.x, this.center.y];
+        let segment = { x: this.center.x, y: this.center.y };
         this.snake.segments.push(segment);
     }
 }
