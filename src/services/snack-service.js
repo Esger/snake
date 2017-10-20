@@ -25,7 +25,10 @@ export class SnackService {
 
     newSnack(x, y, name, i) {
         let snack = {
-            position: [x, y],
+            position: {
+                x: x,
+                y: y
+            },
             name: name,
             nameIndex: i
         }
@@ -33,7 +36,7 @@ export class SnackService {
     }
 
     samePosition(pos1, pos2) {
-        return pos1[0] == pos2[0] && pos1[1] == pos2[1];
+        return pos1.x == pos2.x && pos1.y == pos2.y;
     }
 
     hitSnack(head, neck) {

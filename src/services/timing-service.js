@@ -26,9 +26,12 @@ export class TimingService {
         this.baseScoreInterval = 10;
         this.baseSnackInterval = 10;
         this.baseSpeedupInterval = 100;
-        this.maxStepInterval = 400;
-        this.minStepInterval = 10;
-        this.dropInterval = 0;
+
+        this.maxStepInterval = 240;
+        this.minStepInterval = 20;
+        this.changeStepInterval = 20;
+
+        this.dropInterval = 10;
         this.snackDuration = 15000;
 
         this.methods = {
@@ -89,17 +92,12 @@ export class TimingService {
         (this.steps % this.speedupInterval == 0) && this.speedUp();
         (this.steps % this.snackInterval == 0) && this.snackService.addSnack();
         this.snakeService.step(grow);
-        this.screenService.fadeArena();
-        this.screenService.drawSnacks(this.snackService.snacks);
-        this.screenService.drawSnake(this.snakeService.snake);
         this.scoreService.update(this.snakeService.snake.segments.length);
     }
 
     dropSnake() {
         this.fallTimerHandle = setInterval(() => {
             this.snakeService.fallDown();
-            this.screenService.fadeArena();
-            this.screenService.drawSnake(this.snakeService.snake);
         }, this.dropInterval);
     }
 
@@ -107,7 +105,8 @@ export class TimingService {
         if (this.stepInterval > this.minStepInterval) {
             this.speed += 1;
             this.clearTimedEvents();
-            this.stepInterval -= 40;
+            this.stepInterval -= this.changeStepInterval;
+            this.screenService.setAnimationTime(this.stepInterval * .001);
             this.resumeGame();
             this.ea.publish('speed', this.speed);
         }
@@ -117,7 +116,8 @@ export class TimingService {
         if (this.stepInterval < this.maxStepInterval) {
             this.speed -= 1;
             this.clearTimedEvents();
-            this.stepInterval += 40;
+            this.stepInterval += this.changeStepInterval;
+            this.screenService.setAnimationTime(this.stepInterval * .001);
             this.resumeGame();
             this.ea.publish('speed', this.speed);
         }
@@ -200,6 +200,7 @@ export class TimingService {
 
     resetIntervals() {
         this.stepInterval = this.maxStepInterval;
+        this.screenService.setAnimationTime(this.stepInterval * .001);
         this.scoreInterval = this.baseSoreInterval;
         this.growInterval = this.baseGrowInterval;
         this.speedupInterval = this.baseSpeedupInterval;
