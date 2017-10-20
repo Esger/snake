@@ -119,11 +119,15 @@ export class SnakeService {
     hitWall() {
         let head = this.snake.segments[0];
         let wallHit =
-            head.x > this.screenService.limits.right ||
+            head.x > this.screenService.limits.right - this.snake.segmentSize ||
             head.x < this.screenService.limits.left ||
-            head.y > this.screenService.limits.bottom ||
+            head.y > this.screenService.limits.bottom - this.snake.segmentSize ||
             head.y < this.screenService.limits.top;
-        wallHit && (this.ea.publish('die', 'You hit a wall'));
+        if (wallHit) {
+            this.ea.publish('die', 'You hit a wall');
+            return true;
+        }
+        return false;
     }
 
     hitSnake() {
