@@ -61,6 +61,9 @@ export class SnakeService {
             },
             viagra: () => {
                 this.ea.publish('snack', 'Viagra: grow harder for 15 seconds');
+            },
+            weed: () => {
+                this.ea.publish('snack', 'Weed: high for 15 seconds')
             }
         }
         this.setSubscribers();

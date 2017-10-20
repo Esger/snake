@@ -64,6 +64,9 @@ export class TimingService {
             },
             viagra: () => {
                 this.growHarder();
+            },
+            weed: () => {
+                this.mixSnacks();
             }
         }
 
@@ -143,6 +146,13 @@ export class TimingService {
         this.scoreService.setMultiplier();
         setTimeout(() => {
             this.scoreService.resetMultiplier();
+        }, this.snackDuration);
+    }
+
+    mixSnacks() {
+        this.snackService.mixSnacks();
+        setTimeout(() => {
+            this.snackService.unMixSnacks();
         }, this.snackDuration);
     }
 
