@@ -1,15 +1,15 @@
 <template>
     <require from="components/game-screen.css"></require>
-    <div class="snakeImages">
-        <img repeat.for="image of snakeParts"
-             class.bind="image"
-             src="./images/${image}.png">
+    <div id="arena"
+         class="arena">
+        <img repeat.for="snack of snackService.snacks"
+             src="./images/${snack.name}.png"
+             css.bind="snackPosition($index)"
+             class="snack">
+        <img repeat.for="segment of snakeService.snake.segments"
+             xcss="left: ${segment.x}px; top: ${segment.y}px;"
+             css.bind="segmentCSS($index, segment.x, segment.y)"
+             src="./images/${ snakeImage($index) }.png"
+             class="segment">
     </div>
-    <div class="snackImages">
-        <img repeat.for="image of snackNames"
-             class.bind="image"
-             src="./images/${image}.png">
-    </div>
-    <canvas id="arena"
-            class="arena"></canvas>
 </template>
