@@ -521,7 +521,8 @@ define('services/snack-service',['exports', 'aurelia-framework', 'aurelia-event-
             this.ea = eventAggregator;
             this.screenService = screenService;
             this.snacks = [];
-            this.names = ['axe', 'beer', 'bunny', 'diamond', 'gold', 'ruby', 'skull', 'snail', 'trash', 'viagra'];
+            this.mixUp = false;
+            this.names = ['axe', 'beer', 'bunny', 'diamond', 'gold', 'ruby', 'skull', 'snail', 'trash', 'viagra', 'weed'];
         }
 
         SnackService.prototype.newSnack = function newSnack(x, y, name, i) {
@@ -545,7 +546,12 @@ define('services/snack-service',['exports', 'aurelia-framework', 'aurelia-event-
                 var snack = this.snacks[i];
                 if (this.samePosition(snack.position, head) || this.samePosition(snack.position, neck)) {
                     this.removeSnack(i);
-                    return snack.name;
+                    if (this.mixUp) {
+                        var randomSnack = Math.floor(Math.random() * this.names.length);
+                        return this.names[randomSnack];
+                    } else {
+                        return snack.name;
+                    }
                 }
             }
             return 'nope';
@@ -557,6 +563,14 @@ define('services/snack-service',['exports', 'aurelia-framework', 'aurelia-event-
             var x = this.screenService.roundToSpriteSize(Math.floor(Math.random() * (this.screenService.limits.right - this.screenService.spriteSize)));
             var y = this.screenService.roundToSpriteSize(Math.floor(Math.random() * (this.screenService.limits.bottom - this.screenService.spriteSize)));
             this.snacks.push(this.newSnack(x, y, snack, randomIndex));
+        };
+
+        SnackService.prototype.mixSnacks = function mixSnacks() {
+            this.mixUp = true;
+        };
+
+        SnackService.prototype.unMixSnacks = function unMixSnacks() {
+            this.mixUp = false;
         };
 
         SnackService.prototype.removeSnack = function removeSnack(index) {
@@ -636,6 +650,9 @@ define('services/snake-service',['exports', 'aurelia-framework', 'aurelia-event-
                 },
                 viagra: function viagra() {
                     _this.ea.publish('snack', 'Viagra: grow harder for 15 seconds');
+                },
+                weed: function weed() {
+                    _this.ea.publish('snack', 'Weed: high for 15 seconds');
                 }
             };
             this.setSubscribers();
@@ -833,6 +850,9 @@ define('services/timing-service',['exports', 'aurelia-framework', 'aurelia-event
                 },
                 viagra: function viagra() {
                     _this.growHarder();
+                },
+                weed: function weed() {
+                    _this.mixSnacks();
                 }
             };
 
@@ -925,6 +945,15 @@ define('services/timing-service',['exports', 'aurelia-framework', 'aurelia-event
             }, this.snackDuration);
         };
 
+        TimingService.prototype.mixSnacks = function mixSnacks() {
+            var _this7 = this;
+
+            this.snackService.mixSnacks();
+            setTimeout(function () {
+                _this7.snackService.unMixSnacks();
+            }, this.snackDuration);
+        };
+
         TimingService.prototype.clearTimedEvents = function clearTimedEvents() {
             clearInterval(this.stepTimerHandle);
             clearInterval(this.fallTimerHandle);
@@ -949,35 +978,35 @@ define('services/timing-service',['exports', 'aurelia-framework', 'aurelia-event
         };
 
         TimingService.prototype.setSubscribers = function setSubscribers() {
-            var _this7 = this;
+            var _this8 = this;
 
             var direction = 0;
             this.ea.subscribe('keyPressed', function (response) {
                 switch (response) {
                     case 'Enter':
-                        _this7.ea.publish('start');
+                        _this8.ea.publish('start');
                         break;
                     case ' ':
-                        _this7.ea.publish('pause');
+                        _this8.ea.publish('pause');
                         break;
                 }
             });
             this.ea.subscribe('die', function (response) {
-                _this7.clearTimedEvents();
-                _this7.dropSnake();
+                _this8.clearTimedEvents();
+                _this8.dropSnake();
             });
             this.ea.subscribe('start', function (response) {
-                _this7.restart();
+                _this8.restart();
             });
             this.ea.subscribe('pause', function (response) {
-                _this7.pauseGame();
+                _this8.pauseGame();
             });
             this.ea.subscribe('gameOver', function (response) {
-                _this7.clearTimedEvents();
+                _this8.clearTimedEvents();
             });
             this.ea.subscribe('snack', function (response) {
                 var method = response.split(':')[0].toLowerCase();
-                _this7.methods[method]();
+                _this8.methods[method]();
             });
         };
 
@@ -1091,6 +1120,80 @@ define('aurelia-cookie/aurelia-cookie',["require", "exports"], function (require
     exports.AureliaCookie = AureliaCookie;
 });
 
+define('services/touch-service',['exports', 'aurelia-framework', 'aurelia-event-aggregator'], function (exports, _aureliaFramework, _aureliaEventAggregator) {
+    'use strict';
+
+    Object.defineProperty(exports, "__esModule", {
+        value: true
+    });
+    exports.TouchService = undefined;
+
+    function _classCallCheck(instance, Constructor) {
+        if (!(instance instanceof Constructor)) {
+            throw new TypeError("Cannot call a class as a function");
+        }
+    }
+
+    var _dec, _class;
+
+    var TouchService = exports.TouchService = (_dec = (0, _aureliaFramework.inject)(_aureliaEventAggregator.EventAggregator), _dec(_class = function () {
+        function TouchService(eventAggregator) {
+            var _this = this;
+
+            _classCallCheck(this, TouchService);
+
+            this.ea = eventAggregator;
+            this.$area;
+            this.clickAreaSize = {
+                width: 1,
+                height: 1,
+                diagonal: 1
+            };
+            this.ea.subscribe('touch', function (response) {
+                _this.handleTouch(response);
+            });
+        }
+
+        TouchService.prototype.setAreaSize = function setAreaSize($area) {
+            this.$area = $area;
+            this.clickAreaSize.width = $area.width();
+            this.clickAreaSize.height = $area.height();
+            this.clickAreaSize.height > 0 && (this.clickAreaSize.diagonal = this.clickAreaSize.width / this.clickAreaSize.height);
+        };
+
+        TouchService.prototype.handleTouch = function handleTouch(event) {
+            console.log(event);
+            var clickX = void 0;
+            var clickY = void 0;
+            if (event.layerX) {
+                clickX = event.layerX;
+                clickY = event.layerY;
+            } else {
+                var offset = this.$area.offset();
+                var touch = event.touches[0];
+                clickX = touch.pageX - offset.left;
+                clickY = touch.pageY - offset.top;
+            }
+            var direction = 'undefined';
+            if (clickY <= clickX * this.clickAreaSize.diagonal) {
+                if (clickY <= this.clickAreaSize.height - clickX) {
+                    direction = 'ArrowUp';
+                } else {
+                    direction = 'ArrowRight';
+                }
+            } else {
+                if (clickY <= this.clickAreaSize.height - clickX) {
+                    direction = 'ArrowLeft';
+                } else {
+                    direction = 'ArrowDown';
+                }
+            }
+            this.ea.publish('keyPressed', direction);
+        };
+
+        return TouchService;
+    }()) || _class);
+});
 define('text!app.css', ['module'], function(module) { module.exports = "body {\n    position           : relative;\n    -webkit-user-select: none;\n    -moz-user-select   : none;\n    -ms-user-select    : none;\n    user-select        : none;\n    overflow           : hidden;\n    font-family        : 'Trebuchet MS', sans-serif;\n    height             : 100vh;\n    background         : #800000;\n    /* Permalink - use to edit and share this gradient: http://colorzilla.com/gradient-editor/#dc143c+0,800000+100 */\n    /* Old browsers */\n    background         : url(\"./images/border.png\"), -moz-linear-gradient(top, #dc143c 0%, #800000 100%);\n    /* FF3.6-15 */\n    background         : url(\"./images/border.png\"), -webkit-linear-gradient(top, #dc143c 0%,#800000 100%);\n    /* Chrome10-25,Safari5.1-6 */\n    background         : url(\"./images/border.png\"), linear-gradient(to bottom, #dc143c 0%,#800000 100%);\n    /* W3C, IE10+, FF16+, Chrome26+, Opera12+, Safari7+ */\n    filter: progid:DXImageTransform.Microsoft.gradient( startColorstr=  '#dc143c', endColorstr='#800000',GradientType=0 );\n    /* IE6-9 */\n    /* background-image   : url(\"./images/border.png\"); */\n    background-repeat  : no-repeat;\n    background-size    : 100% 100%;\n}\n\n.gameTitle {\n    position      : absolute;\n    z-index       : 2;\n    top           : 0;\n    width         : 100vw;\n    letter-spacing: 1px;\n    font-size     : 20px;\n    line-height   : 24px;\n    text-align    : center;\n    color         : whitesmoke;\n}\n"; });
 define('text!app.html', ['module'], function(module) { module.exports = "<template>\n    <require from=\"reset.css\"></require>\n    <require from=\"app.css\"></require>\n    <require from=\"components/game-screen\"></require>\n    <require from=\"components/restart-overlay\"></require>\n    <require from=\"components/status\"></require>\n    <h1 class=\"gameTitle\">${message}</h1>\n    <game-screen></game-screen>\n    <restart-overlay></restart-overlay>\n    <status></status>\n</template>"; });
 define('text!reset.css', ['module'], function(module) { module.exports = "/* http://meyerweb.com/eric/tools/css/reset/ \n   v2.0 | 20110126\n   License: none (public domain)\n*/\n\na, abbr, acronym, address, applet, article, aside, audio, b, big, blockquote, body, canvas, caption, center, cite, code, dd, del, details, dfn, div, dl, dt, em, embed, fieldset, figcaption, figure, footer, form, h1, h2, h3, h4, h5, h6, header, hgroup, html, i, iframe, img, ins, kbd, label, legend, li, mark, menu, nav, object, ol, output, p, pre, q, ruby, s, samp, section, small, span, strike, strong, sub, summary, sup, table, tbody, td, tfoot, th, thead, time, tr, tt, u, ul, var, video {\n    margin        : 0;\n    padding       : 0;\n    border        : 0;\n    font-size     : 100%;\n    font          : inherit;\n    vertical-align: baseline;\n}\n/* HTML5 display-role reset for older browsers */\narticle, aside, details, figcaption, figure, footer, header, hgroup, menu, nav, section {\n    display: block;\n}\n\nbody {\n    line-height: 1;\n}\n\nol, ul {\n    list-style: none;\n}\n\nblockquote, q {\n    quotes: none;\n}\n\nblockquote:after, blockquote:before, q:after, q:before {\n    content: '';\n    content: none;\n}\n\ntable {\n    border-collapse: collapse;\n    border-spacing : 0;\n}\n"; });

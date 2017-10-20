@@ -9,6 +9,7 @@ export class SnackService {
         this.ea = eventAggregator;
         this.screenService = screenService;
         this.snacks = [];
+        this.mixUp = false;
         this.names = [
             'axe',
             'beer',
@@ -19,7 +20,8 @@ export class SnackService {
             'skull',
             'snail',
             'trash',
-            'viagra'
+            'viagra',
+            'weed'
         ]
     }
 
@@ -45,7 +47,12 @@ export class SnackService {
             if (this.samePosition(snack.position, head) ||
                 this.samePosition(snack.position, neck)) {
                 this.removeSnack(i);
-                return snack.name;
+                if (this.mixUp) {
+                    let randomSnack = Math.floor(Math.random() * this.names.length);
+                    return this.names[randomSnack];
+                } else {
+                    return snack.name;
+                }
             }
         }
         return 'nope';
@@ -57,6 +64,14 @@ export class SnackService {
         let x = this.screenService.roundToSpriteSize(Math.floor(Math.random() * (this.screenService.limits.right - this.screenService.spriteSize)))
         let y = this.screenService.roundToSpriteSize(Math.floor(Math.random() * (this.screenService.limits.bottom - this.screenService.spriteSize)))
         this.snacks.push(this.newSnack(x, y, snack, randomIndex));
+    }
+
+    mixSnacks() {
+        this.mixUp = true;
+    }
+
+    unMixSnacks() {
+        this.mixUp = false;
     }
 
     removeSnack(index) {
