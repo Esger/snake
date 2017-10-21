@@ -33,9 +33,10 @@ export class StatusCustomElement {
             this.highScore = response.highScore;
         });
         this.ea.subscribe('snack', response => {
-            this.snack = response.split(':')[0].toLowerCase();
-            if (this.snacksForIndicator.indexOf(this.snack) >= 0) {
-                this.indicators.push(this.snack);
+            this.snack = response;
+            let name = response.split(':')[0].toLowerCase();
+            if (this.snacksForIndicator.indexOf(name) >= 0) {
+                this.indicators.push(name);
                 setTimeout(() => {
                     this.indicators.shift();
                     this.snack = '';
