@@ -16,3 +16,19 @@ status {
 .length, .score, .snack, .speed {
     margin-right: 10px;
 }
+
+.indicators {
+    position: absolute;
+    left    : 24px;
+    bottom  : 4px;
+    height  : 20px;
+}
+
+.indicators img {
+    width : 20px;
+    height: auto;
+}
+
+.indicators img + img {
+    margin-left: 10px;
+}
