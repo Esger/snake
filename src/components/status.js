@@ -14,6 +14,8 @@ export class StatusCustomElement {
         this.score = 0;
         this.highScore;
         this.resetVars();
+        this.snacksForIndicator = 'beer bunny ruby snail viagra weed';
+        this.indicators = [];
     }
 
     addEventListeners() {
@@ -32,9 +34,14 @@ export class StatusCustomElement {
         });
         this.ea.subscribe('snack', response => {
             this.snack = response;
-            setTimeout(() => {
-                this.snack = '';
-            }, 15000);
+            let name = response.split(':')[0].toLowerCase();
+            if (this.snacksForIndicator.indexOf(name) >= 0) {
+                this.indicators.push(name);
+                setTimeout(() => {
+                    this.indicators.shift();
+                    this.snack = '';
+                }, 15000);
+            }
         });
         this.ea.subscribe('die', response => {
             this.snack = response;

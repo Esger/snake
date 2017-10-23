@@ -258,6 +258,8 @@ define('components/status',['exports', 'aurelia-framework', 'aurelia-event-aggre
             this.score = 0;
             this.highScore;
             this.resetVars();
+            this.snacksForIndicator = 'beer bunny ruby snail viagra weed';
+            this.indicators = [];
         }
 
         StatusCustomElement.prototype.addEventListeners = function addEventListeners() {
@@ -278,9 +280,14 @@ define('components/status',['exports', 'aurelia-framework', 'aurelia-event-aggre
             });
             this.ea.subscribe('snack', function (response) {
                 _this.snack = response;
-                setTimeout(function () {
-                    _this.snack = '';
-                }, 15000);
+                var name = response.split(':')[0].toLowerCase();
+                if (_this.snacksForIndicator.indexOf(name) >= 0) {
+                    _this.indicators.push(name);
+                    setTimeout(function () {
+                        _this.indicators.shift();
+                        _this.snack = '';
+                    }, 15000);
+                }
             });
             this.ea.subscribe('die', function (response) {
                 _this.snack = response;
@@ -304,15 +311,6 @@ define('components/status',['exports', 'aurelia-framework', 'aurelia-event-aggre
 
         return StatusCustomElement;
     }()) || _class);
-});
-define('resources/index',["exports"], function (exports) {
-  "use strict";
-
-  Object.defineProperty(exports, "__esModule", {
-    value: true
-  });
-  exports.configure = configure;
-  function configure(config) {}
 });
 define('services/keystroke-service',['exports', 'aurelia-framework', 'aurelia-event-aggregator'], function (exports, _aureliaFramework, _aureliaEventAggregator) {
     'use strict';
@@ -533,7 +531,8 @@ define('services/snack-service',['exports', 'aurelia-framework', 'aurelia-event-
             this.ea = eventAggregator;
             this.screenService = screenService;
             this.snacks = [];
-            this.names = ['axe', 'beer', 'bunny', 'diamond', 'gold', 'ruby', 'skull', 'snail', 'trash', 'viagra'];
+            this.mixUp = false;
+            this.names = ['axe', 'beer', 'bunny', 'diamond', 'gold', 'ruby', 'skull', 'snail', 'trash', 'viagra', 'weed'];
         }
 
         SnackService.prototype.newSnack = function newSnack(x, y, name, i) {
@@ -557,7 +556,12 @@ define('services/snack-service',['exports', 'aurelia-framework', 'aurelia-event-
                 var snack = this.snacks[i];
                 if (this.samePosition(snack.position, head) || this.samePosition(snack.position, neck)) {
                     this.removeSnack(i);
-                    return snack.name;
+                    if (this.mixUp) {
+                        var randomSnack = Math.floor(Math.random() * this.names.length);
+                        return this.names[randomSnack];
+                    } else {
+                        return snack.name;
+                    }
                 }
             }
             return 'nope';
@@ -569,6 +573,14 @@ define('services/snack-service',['exports', 'aurelia-framework', 'aurelia-event-
             var x = this.screenService.roundToSpriteSize(Math.floor(Math.random() * (this.screenService.limits.right - this.screenService.spriteSize)));
             var y = this.screenService.roundToSpriteSize(Math.floor(Math.random() * (this.screenService.limits.bottom - this.screenService.spriteSize)));
             this.snacks.push(this.newSnack(x, y, snack, randomIndex));
+        };
+
+        SnackService.prototype.mixSnacks = function mixSnacks() {
+            this.mixUp = true;
+        };
+
+        SnackService.prototype.unMixSnacks = function unMixSnacks() {
+            this.mixUp = false;
         };
 
         SnackService.prototype.removeSnack = function removeSnack(index) {
@@ -648,6 +660,9 @@ define('services/snake-service',['exports', 'aurelia-framework', 'aurelia-event-
                 },
                 viagra: function viagra() {
                     _this.ea.publish('snack', 'Viagra: grow harder for 15 seconds');
+                },
+                weed: function weed() {
+                    _this.ea.publish('snack', 'Weed: high for 15 seconds');
                 }
             };
             this.setSubscribers();
@@ -849,6 +864,9 @@ define('services/timing-service',['exports', 'aurelia-framework', 'aurelia-event
                 },
                 viagra: function viagra() {
                     _this.growHarder();
+                },
+                weed: function weed() {
+                    _this.mixSnacks();
                 }
             };
 
@@ -941,6 +959,15 @@ define('services/timing-service',['exports', 'aurelia-framework', 'aurelia-event
             }, this.snackDuration);
         };
 
+        TimingService.prototype.mixSnacks = function mixSnacks() {
+            var _this7 = this;
+
+            this.snackService.mixSnacks();
+            setTimeout(function () {
+                _this7.snackService.unMixSnacks();
+            }, this.snackDuration);
+        };
+
         TimingService.prototype.clearTimedEvents = function clearTimedEvents() {
             clearInterval(this.stepTimerHandle);
             clearInterval(this.fallTimerHandle);
@@ -965,35 +992,35 @@ define('services/timing-service',['exports', 'aurelia-framework', 'aurelia-event
         };
 
         TimingService.prototype.setSubscribers = function setSubscribers() {
-            var _this7 = this;
+            var _this8 = this;
 
             var direction = 0;
             this.ea.subscribe('keyPressed', function (response) {
                 switch (response) {
                     case 'Enter':
-                        _this7.ea.publish('start');
+                        _this8.ea.publish('start');
                         break;
                     case ' ':
-                        _this7.ea.publish('pause');
+                        _this8.ea.publish('pause');
                         break;
                 }
             });
             this.ea.subscribe('die', function (response) {
-                _this7.clearTimedEvents();
-                _this7.dropSnake();
+                _this8.clearTimedEvents();
+                _this8.dropSnake();
             });
             this.ea.subscribe('start', function (response) {
-                _this7.restart();
+                _this8.restart();
             });
             this.ea.subscribe('pause', function (response) {
-                _this7.pauseGame();
+                _this8.pauseGame();
             });
             this.ea.subscribe('gameOver', function (response) {
-                _this7.clearTimedEvents();
+                _this8.clearTimedEvents();
             });
             this.ea.subscribe('snack', function (response) {
                 var method = response.split(':')[0].toLowerCase();
-                _this7.methods[method]();
+                _this8.methods[method]();
             });
         };
 
@@ -1009,6 +1036,15 @@ define('services/timing-service',['exports', 'aurelia-framework', 'aurelia-event
 
         return TimingService;
     }()) || _class);
+});
+define('resources/index',["exports"], function (exports) {
+  "use strict";
+
+  Object.defineProperty(exports, "__esModule", {
+    value: true
+  });
+  exports.configure = configure;
+  function configure(config) {}
 });
 define('aurelia-cookie/aurelia-cookie',["require", "exports"], function (require, exports) {
     "use strict";
@@ -1181,13 +1217,13 @@ define('services/touch-service',['exports', 'aurelia-framework', 'aurelia-event-
         return TouchService;
     }()) || _class);
 });
-define('text!app.css', ['module'], function(module) { module.exports = "body {\n    position           : relative;\n    -webkit-user-select: none;\n    -moz-user-select   : none;\n    -ms-user-select    : none;\n    user-select        : none;\n    overflow           : hidden;\n    font-family        : 'Trebuchet MS', sans-serif;\n    height             : 100vh;\n    background         : #800000;\n    /* Permalink - use to edit and share this gradient: http://colorzilla.com/gradient-editor/#dc143c+0,800000+100 */\n    /* Old browsers */\n    background         : url(\"./images/border.png\"), -moz-linear-gradient(top, #dc143c 0%, #800000 100%);\n    /* FF3.6-15 */\n    background         : url(\"./images/border.png\"), -webkit-linear-gradient(top, #dc143c 0%,#800000 100%);\n    /* Chrome10-25,Safari5.1-6 */\n    background         : url(\"./images/border.png\"), linear-gradient(to bottom, #dc143c 0%,#800000 100%);\n    /* W3C, IE10+, FF16+, Chrome26+, Opera12+, Safari7+ */\n    filter: progid:DXImageTransform.Microsoft.gradient( startColorstr=  '#dc143c', endColorstr='#800000',GradientType=0 );\n    /* IE6-9 */\n    /* background-image   : url(\"./images/border.png\"); */\n    background-repeat  : no-repeat;\n    background-size    : 100% 100%;\n}\n\n.gameTitle {\n    position      : absolute;\n    z-index       : 2;\n    top           : 0;\n    width         : 100vw;\n    letter-spacing: 1px;\n    font-size     : 20px;\n    line-height   : 24px;\n    text-align    : center;\n    color         : whitesmoke;\n}\n"; });
 define('text!app.html', ['module'], function(module) { module.exports = "<template>\n    <require from=\"reset.css\"></require>\n    <require from=\"app.css\"></require>\n    <require from=\"components/game-screen\"></require>\n    <require from=\"components/restart-overlay\"></require>\n    <require from=\"components/status\"></require>\n    <h1 class=\"gameTitle\">${message}</h1>\n    <game-screen></game-screen>\n    <restart-overlay></restart-overlay>\n    <status></status>\n</template>"; });
-define('text!reset.css', ['module'], function(module) { module.exports = "/* http://meyerweb.com/eric/tools/css/reset/ \n   v2.0 | 20110126\n   License: none (public domain)\n*/\n\na, abbr, acronym, address, applet, article, aside, audio, b, big, blockquote, body, canvas, caption, center, cite, code, dd, del, details, dfn, div, dl, dt, em, embed, fieldset, figcaption, figure, footer, form, h1, h2, h3, h4, h5, h6, header, hgroup, html, i, iframe, img, ins, kbd, label, legend, li, mark, menu, nav, object, ol, output, p, pre, q, ruby, s, samp, section, small, span, strike, strong, sub, summary, sup, table, tbody, td, tfoot, th, thead, time, tr, tt, u, ul, var, video {\n    margin        : 0;\n    padding       : 0;\n    border        : 0;\n    font-size     : 100%;\n    font          : inherit;\n    vertical-align: baseline;\n}\n/* HTML5 display-role reset for older browsers */\narticle, aside, details, figcaption, figure, footer, header, hgroup, menu, nav, section {\n    display: block;\n}\n\nbody {\n    line-height: 1;\n}\n\nol, ul {\n    list-style: none;\n}\n\nblockquote, q {\n    quotes: none;\n}\n\nblockquote:after, blockquote:before, q:after, q:before {\n    content: '';\n    content: none;\n}\n\ntable {\n    border-collapse: collapse;\n    border-spacing : 0;\n}\n"; });
+define('text!app.css', ['module'], function(module) { module.exports = "body {\n    position           : relative;\n    -webkit-user-select: none;\n    -moz-user-select   : none;\n    -ms-user-select    : none;\n    user-select        : none;\n    overflow           : hidden;\n    font-family        : 'Trebuchet MS', sans-serif;\n    height             : 100vh;\n    background         : #800000;\n    /* Permalink - use to edit and share this gradient: http://colorzilla.com/gradient-editor/#dc143c+0,800000+100 */\n    /* Old browsers */\n    background         : url(\"./images/border.png\"), -moz-linear-gradient(top, #dc143c 0%, #800000 100%);\n    /* FF3.6-15 */\n    background         : url(\"./images/border.png\"), -webkit-linear-gradient(top, #dc143c 0%,#800000 100%);\n    /* Chrome10-25,Safari5.1-6 */\n    background         : url(\"./images/border.png\"), linear-gradient(to bottom, #dc143c 0%,#800000 100%);\n    /* W3C, IE10+, FF16+, Chrome26+, Opera12+, Safari7+ */\n    filter: progid:DXImageTransform.Microsoft.gradient( startColorstr=  '#dc143c', endColorstr='#800000',GradientType=0 );\n    /* IE6-9 */\n    /* background-image   : url(\"./images/border.png\"); */\n    background-repeat  : no-repeat;\n    background-size    : 100% 100%;\n}\n\n.gameTitle {\n    position      : absolute;\n    z-index       : 2;\n    top           : 0;\n    width         : 100vw;\n    letter-spacing: 1px;\n    font-size     : 20px;\n    line-height   : 24px;\n    text-align    : center;\n    color         : whitesmoke;\n}\n"; });
 define('text!components/game-screen.html', ['module'], function(module) { module.exports = "<template>\n    <require from=\"components/game-screen.css\"></require>\n    <div id=\"arena\"\n         class=\"arena\"\n         touchstart.delegate=\"touchService.handleTouch($event)\">\n        <img repeat.for=\"snack of snackService.snacks\"\n             src=\"./images/${snack.name}.png\"\n             css.bind=\"snackPosition($index)\"\n             class=\"snack\">\n        <img repeat.for=\"segment of snakeService.snake.segments\"\n             xcss=\"left: ${segment.x}px; top: ${segment.y}px;\"\n             css.bind=\"segmentCSS($index, segment.x, segment.y)\"\n             src=\"./images/${ snakeImage($index) }.png\"\n             class=\"segment\">\n    </div>\n</template>"; });
-define('text!components/game-screen.css', ['module'], function(module) { module.exports = "game-Screen {\n    display              : -webkit-box;\n    display              : -ms-flexbox;\n    display              : flex;\n    -webkit-box-orient   : vertical;\n    -webkit-box-direction: normal;\n    -ms-flex-direction   : column;\n    flex-direction       : column;\n    -webkit-box-pack     : center;\n    -ms-flex-pack        : center;\n    justify-content      : center;\n    -webkit-box-align    : center;\n    -ms-flex-align       : center;\n    align-items          : center;\n    width                : 100vw;\n    height               : 100vh;\n    position             : relative;\n    overflow             : hidden;\n}\n\n.arena {\n    position        : relative;\n    background-color: black;\n    pointer-events  : auto;\n    overflow        : hidden;\n}\n\n.arena img {\n    position: absolute;\n}\n\n.arena .segment {\n    -webkit-transform-origin: 50% 50%;\n    transform-origin        : 50% 50%;\n}\n\n.arena .snack {\n    width            : 24px;\n    height           : 24px;\n    -webkit-transform: translate(-4px,-4px);\n    transform        : translate(-4px,-4px);\n}\n"; });
+define('text!reset.css', ['module'], function(module) { module.exports = "/* http://meyerweb.com/eric/tools/css/reset/ \n   v2.0 | 20110126\n   License: none (public domain)\n*/\n\na, abbr, acronym, address, applet, article, aside, audio, b, big, blockquote, body, canvas, caption, center, cite, code, dd, del, details, dfn, div, dl, dt, em, embed, fieldset, figcaption, figure, footer, form, h1, h2, h3, h4, h5, h6, header, hgroup, html, i, iframe, img, ins, kbd, label, legend, li, mark, menu, nav, object, ol, output, p, pre, q, ruby, s, samp, section, small, span, strike, strong, sub, summary, sup, table, tbody, td, tfoot, th, thead, time, tr, tt, u, ul, var, video {\n    margin        : 0;\n    padding       : 0;\n    border        : 0;\n    font-size     : 100%;\n    font          : inherit;\n    vertical-align: baseline;\n}\n/* HTML5 display-role reset for older browsers */\narticle, aside, details, figcaption, figure, footer, header, hgroup, menu, nav, section {\n    display: block;\n}\n\nbody {\n    line-height: 1;\n}\n\nol, ul {\n    list-style: none;\n}\n\nblockquote, q {\n    quotes: none;\n}\n\nblockquote:after, blockquote:before, q:after, q:before {\n    content: '';\n    content: none;\n}\n\ntable {\n    border-collapse: collapse;\n    border-spacing : 0;\n}\n"; });
 define('text!components/restart-overlay.html', ['module'], function(module) { module.exports = "<template class=\"${showOverlay || pause ? 'show' : ''}\"\n          click.delegate=\"start()\"\n          touchstart.delegate=\"start()\">\n    <require from=\"components/restart-overlay.css\"></require>\n    <h2 class=\"restart ${!pause && !firstGame ? 'show' : ''}\">Game over</h2>\n    <h2 class=\"restart ${!pause ? 'show' : ''}\">Click or tap or &lt;enter&gt; to start new game</h2>\n    <h2 class=\"paused ${pause ? 'show' : ''}\">Game paused</h2>\n    <h2 class=\"paused ${pause ? 'show' : ''}\">Press space to continue</h2>\n\n</template>"; });
+define('text!components/game-screen.css', ['module'], function(module) { module.exports = "game-Screen {\n    display              : -webkit-box;\n    display              : -ms-flexbox;\n    display              : flex;\n    -webkit-box-orient   : vertical;\n    -webkit-box-direction: normal;\n    -ms-flex-direction   : column;\n    flex-direction       : column;\n    -webkit-box-pack     : center;\n    -ms-flex-pack        : center;\n    justify-content      : center;\n    -webkit-box-align    : center;\n    -ms-flex-align       : center;\n    align-items          : center;\n    width                : 100vw;\n    height               : 100vh;\n    position             : relative;\n    overflow             : hidden;\n}\n\n.arena {\n    position        : relative;\n    background-color: black;\n    pointer-events  : auto;\n    overflow        : hidden;\n}\n\n.arena img {\n    position: absolute;\n}\n\n.arena .segment {\n    -webkit-transform-origin: 50% 50%;\n    transform-origin        : 50% 50%;\n}\n\n.arena .snack {\n    width            : 24px;\n    height           : 24px;\n    -webkit-transform: translate(-4px,-4px);\n    transform        : translate(-4px,-4px);\n}\n"; });
+define('text!components/status.html', ['module'], function(module) { module.exports = "<template>\n    <require from=\"components/status.css\"></require>\n    <div class=\"indicators\">\n        <img repeat.for=\"indicator of indicators\"\n             class.bind=\"indicator\"\n             src=\"./images/${ indicator }.png\">\n    </div>\n    <h2 class=\"statusLine\">\n        <span>Speed:</span><span class=\"speed\">${speed}</span>\n        <span>Length:</span><span class=\"length\">${length}</span>\n        <span>Score:</span><span class=\"score\">${score}</span>\n        <span click.delegate=\"resetHighscore()\"><span>High:</span><span class=\"high\">${highScore}</span></span>\n        <span class=\"snack\"\n              innerhtml.bind=\"snack\"></span>\n    </h2>\n</template>"; });
 define('text!components/restart-overlay.css', ['module'], function(module) { module.exports = "restart-overlay {\n    position        : absolute;\n    z-index         : 10;\n    top             : 0;\n    left            : 0;\n    display         : flex;\n    flex-direction  : column;\n    justify-content : space-around;\n    align-items     : center;\n    width           : 100vw;\n    height          : 100vh;\n    background-color: rgba(0,0,0,.7);\n    opacity         : 0;\n    pointer-events  : none;\n    transition      : all .2s;\n}\n\nrestart-overlay.show {\n    opacity       : 1;\n    pointer-events: all;\n}\n\nrestart-overlay h2 {\n    font-size  : 4vmin;\n    line-height: 4vmin;\n    color      : whitesmoke;\n}\n\n.paused, .restart {\n    display: none;\n}\n\n.paused.show, .restart.show {\n    display: block;\n}\n"; });
-define('text!components/status.html', ['module'], function(module) { module.exports = "<template>\n    <require from=\"components/status.css\"></require>\n    <h2 class=\"statusLine\">\n        <span>Speed:</span><span class=\"speed\">${speed}</span>\n        <span>Length:</span><span class=\"length\">${length}</span>\n        <span>Score:</span><span class=\"score\">${score}</span>\n        <span click.delegate=\"resetHighscore()\"><span>High:</span><span class=\"high\">${highScore}</span></span>\n        <span class=\"snack\"\n              innerhtml.bind=\"snack\"></span>\n    </h2>\n</template>"; });
-define('text!components/status.css', ['module'], function(module) { module.exports = "status {\n    position  : absolute;\n    z-index   : 2;\n    bottom    : 0;\n    width     : 100vw;\n    text-align: center;\n}\n\n.statusLine {\n    font-size  : 18px;\n    line-height: 30px;\n    color      : wheat;\n    /* margin-left: 24px; */\n}\n\n.length, .score, .snack, .speed {\n    margin-right: 10px;\n}\n"; });
+define('text!components/status.css', ['module'], function(module) { module.exports = "status {\n    position  : absolute;\n    z-index   : 2;\n    bottom    : 0;\n    width     : 100vw;\n    text-align: center;\n}\n\n.statusLine {\n    font-size  : 18px;\n    line-height: 30px;\n    color      : wheat;\n    /* margin-left: 24px; */\n}\n\n.length, .score, .snack, .speed {\n    margin-right: 10px;\n}\n\n.indicators {\n    position: absolute;\n    left    : 24px;\n    bottom  : 4px;\n    height  : 20px;\n}\n\n.indicators img {\n    width : 20px;\n    height: auto;\n}\n\n.indicators img + img {\n    margin-left: 10px;\n}\n"; });
 //# sourceMappingURL=app-bundle.js.map
