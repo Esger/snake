@@ -31,7 +31,8 @@ export class GameScreenCustomElement {
     }
 
     handleTouch(event) {
-        this.ea.publish('touch', event);
+        this.ea.publish('touch', { event: event, snake: this.snakeService.snake });
+        return false;
     }
 
     roundToSpriteSize(size) {
@@ -74,7 +75,6 @@ export class GameScreenCustomElement {
         this.$arena.height(targetHeight);
         this.touchService.setAreaSize(this.$arena);
         this.screenService.setDomVars(this.$arena);
-        this.snakeService.setCenter();
     }
 
 }

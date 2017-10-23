@@ -26,11 +26,12 @@ export class TouchService {
         this.$area = $area;
         this.clickAreaSize.width = $area.width();
         this.clickAreaSize.height = $area.height();
-        (this.clickAreaSize.height > 0) && (this.clickAreaSize.diagonal = this.clickAreaSize.width / this.clickAreaSize.height);
+        (this.clickAreaSize.width > 0) && (this.clickAreaSize.diagonal = this.clickAreaSize.height / this.clickAreaSize.width);
     }
 
-    handleTouch(event) {
-        console.log(event);
+    handleTouch(response) {
+        let event = response.event;
+        let snake = response.snake;
         let clickX;
         let clickY;
         if (event.layerX) {
@@ -57,6 +58,7 @@ export class TouchService {
             }
         }
         this.ea.publish('keyPressed', direction);
+        return false;
     }
 
 }

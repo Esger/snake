@@ -2,7 +2,7 @@
     <require from="components/game-screen.css"></require>
     <div id="arena"
          class="arena"
-         touchstart.delegate="touchService.handleTouch($event)">
+         touchstart.delegate="handleTouch($event)">
         <img repeat.for="snack of snackService.snacks"
              src="./images/${snack.name}.png"
              css.bind="snackPosition($index)"
