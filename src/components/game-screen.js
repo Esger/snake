@@ -30,11 +30,6 @@ export class GameScreenCustomElement {
         this.animationTime = () => { return this.screenService.getAnimationTime(); };
     }
 
-    handleTouch(event) {
-        this.ea.publish('touch', { event: event, snake: this.snakeService.snake });
-        return false;
-    }
-
     roundToSpriteSize(size) {
         return Math.floor(size / this.spriteSize) * this.spriteSize;
     }

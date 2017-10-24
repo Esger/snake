@@ -29,9 +29,7 @@ export class TouchService {
         (this.clickAreaSize.width > 0) && (this.clickAreaSize.diagonal = this.clickAreaSize.height / this.clickAreaSize.width);
     }
 
-    handleTouch(response) {
-        let event = response.event;
-        let snake = response.snake;
+    handleTouch(event) {
         let clickX;
         let clickY;
         if (event.layerX) {

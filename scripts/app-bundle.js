@@ -123,11 +123,6 @@ define('components/game-screen',['exports', 'aurelia-framework', 'aurelia-event-
             };
         }
 
-        GameScreenCustomElement.prototype.handleTouch = function handleTouch(event) {
-            this.ea.publish('touch', { event: event, snake: this.snakeService.snake });
-            return false;
-        };
-
         GameScreenCustomElement.prototype.roundToSpriteSize = function roundToSpriteSize(size) {
             return Math.floor(size / this.spriteSize) * this.spriteSize;
         };
@@ -207,10 +202,10 @@ define('components/restart-overlay',['exports', 'aurelia-framework', 'aurelia-ev
         RestartOverlayCustomElement.prototype.start = function start() {
             if (!this.started) {
                 this.ea.publish('start');
-                this.showOverlay = false;
                 this.firstGame = false;
                 this.started = true;
             }
+            return false;
         };
 
         RestartOverlayCustomElement.prototype.addEventListeners = function addEventListeners() {
@@ -792,7 +787,10 @@ define('services/snake-service',['exports', 'aurelia-framework', 'aurelia-event-
             this.snake.segments = [];
             this.snake.turnSteps = 0;
             this.limits = this.screenService.getLimits();
-            var segment = this.screenService.getCanvasCenter();
+            var center = this.screenService.getCanvasCenter();
+            var segment = {};
+            segment.x = center.x;
+            segment.y = center.y;
             this.snake.segments.push(segment);
         };
 
@@ -1090,9 +1088,7 @@ define('services/touch-service',['exports', 'aurelia-framework', 'aurelia-event-
             this.clickAreaSize.width > 0 && (this.clickAreaSize.diagonal = this.clickAreaSize.height / this.clickAreaSize.width);
         };
 
-        TouchService.prototype.handleTouch = function handleTouch(response) {
-            var event = response.event;
-            var snake = response.snake;
+        TouchService.prototype.handleTouch = function handleTouch(event) {
             var clickX = void 0;
             var clickY = void 0;
             if (event.layerX) {
@@ -1233,7 +1229,7 @@ define('aurelia-cookie/aurelia-cookie',["require", "exports"], function (require
 
 define('text!app.html', ['module'], function(module) { module.exports = "<template>\n    <require from=\"reset.css\"></require>\n    <require from=\"app.css\"></require>\n    <require from=\"components/game-screen\"></require>\n    <require from=\"components/restart-overlay\"></require>\n    <require from=\"components/status\"></require>\n    <h1 class=\"gameTitle\">${message}</h1>\n    <game-screen></game-screen>\n    <restart-overlay></restart-overlay>\n    <status></status>\n</template>"; });
 define('text!app.css', ['module'], function(module) { module.exports = "body {\n    position           : relative;\n    -webkit-user-select: none;\n    -moz-user-select   : none;\n    -ms-user-select    : none;\n    user-select        : none;\n    overflow           : hidden;\n    font-family        : 'Trebuchet MS', sans-serif;\n    height             : 100vh;\n    background         : #800000;\n    /* Permalink - use to edit and share this gradient: http://colorzilla.com/gradient-editor/#dc143c+0,800000+100 */\n    /* Old browsers */\n    background         : url(\"./images/border.png\"), -moz-linear-gradient(top, #dc143c 0%, #800000 100%);\n    /* FF3.6-15 */\n    background         : url(\"./images/border.png\"), -webkit-linear-gradient(top, #dc143c 0%,#800000 100%);\n    /* Chrome10-25,Safari5.1-6 */\n    background         : url(\"./images/border.png\"), linear-gradient(to bottom, #dc143c 0%,#800000 100%);\n    /* W3C, IE10+, FF16+, Chrome26+, Opera12+, Safari7+ */\n    filter: progid:DXImageTransform.Microsoft.gradient( startColorstr=  '#dc143c', endColorstr='#800000',GradientType=0 );\n    /* IE6-9 */\n    /* background-image   : url(\"./images/border.png\"); */\n    background-repeat  : no-repeat;\n    background-size    : 100% 100%;\n}\n\n.gameTitle {\n    position      : absolute;\n    z-index       : 2;\n    top           : 0;\n    width         : 100vw;\n    letter-spacing: 1px;\n    font-size     : 20px;\n    line-height   : 24px;\n    text-align    : center;\n    color         : whitesmoke;\n}\n"; });
-define('text!components/game-screen.html', ['module'], function(module) { module.exports = "<template>\n    <require from=\"components/game-screen.css\"></require>\n    <div id=\"arena\"\n         class=\"arena\"\n         touchstart.delegate=\"handleTouch($event)\">\n        <img repeat.for=\"snack of snackService.snacks\"\n             src=\"./images/${snack.name}.png\"\n             css.bind=\"snackPosition($index)\"\n             class=\"snack\">\n        <img repeat.for=\"segment of snakeService.snake.segments\"\n             xcss=\"left: ${segment.x}px; top: ${segment.y}px;\"\n             css.bind=\"segmentCSS($index, segment.x, segment.y)\"\n             src=\"./images/${ snakeImage($index) }.png\"\n             class=\"segment\">\n    </div>\n</template>"; });
+define('text!components/game-screen.html', ['module'], function(module) { module.exports = "<template>\n    <require from=\"components/game-screen.css\"></require>\n    <div id=\"arena\"\n         class=\"arena\"\n         touchstart.delegate=\"touchService.handleTouch($event)\">\n        <img repeat.for=\"snack of snackService.snacks\"\n             src=\"./images/${snack.name}.png\"\n             css.bind=\"snackPosition($index)\"\n             class=\"snack\">\n        <img repeat.for=\"segment of snakeService.snake.segments\"\n             xcss=\"left: ${segment.x}px; top: ${segment.y}px;\"\n             css.bind=\"segmentCSS($index, segment.x, segment.y)\"\n             src=\"./images/${ snakeImage($index) }.png\"\n             class=\"segment\">\n    </div>\n</template>"; });
 define('text!reset.css', ['module'], function(module) { module.exports = "/* http://meyerweb.com/eric/tools/css/reset/ \n   v2.0 | 20110126\n   License: none (public domain)\n*/\n\na, abbr, acronym, address, applet, article, aside, audio, b, big, blockquote, body, canvas, caption, center, cite, code, dd, del, details, dfn, div, dl, dt, em, embed, fieldset, figcaption, figure, footer, form, h1, h2, h3, h4, h5, h6, header, hgroup, html, i, iframe, img, ins, kbd, label, legend, li, mark, menu, nav, object, ol, output, p, pre, q, ruby, s, samp, section, small, span, strike, strong, sub, summary, sup, table, tbody, td, tfoot, th, thead, time, tr, tt, u, ul, var, video {\n    margin        : 0;\n    padding       : 0;\n    border        : 0;\n    font-size     : 100%;\n    font          : inherit;\n    vertical-align: baseline;\n}\n/* HTML5 display-role reset for older browsers */\narticle, aside, details, figcaption, figure, footer, header, hgroup, menu, nav, section {\n    display: block;\n}\n\nbody {\n    line-height: 1;\n}\n\nol, ul {\n    list-style: none;\n}\n\nblockquote, q {\n    quotes: none;\n}\n\nblockquote:after, blockquote:before, q:after, q:before {\n    content: '';\n    content: none;\n}\n\ntable {\n    border-collapse: collapse;\n    border-spacing : 0;\n}\n"; });
 define('text!components/restart-overlay.html', ['module'], function(module) { module.exports = "<template class=\"${showOverlay || pause ? 'show' : ''}\"\n          click.delegate=\"start()\"\n          touchstart.delegate=\"start()\">\n    <require from=\"components/restart-overlay.css\"></require>\n    <h2 class=\"restart ${!pause && !firstGame ? 'show' : ''}\">Game over</h2>\n    <h2 class=\"restart ${!pause ? 'show' : ''}\">Click or tap or &lt;enter&gt; to start new game</h2>\n    <h2 class=\"paused ${pause ? 'show' : ''}\">Game paused</h2>\n    <h2 class=\"paused ${pause ? 'show' : ''}\">Press space to continue</h2>\n\n</template>"; });
 define('text!components/game-screen.css', ['module'], function(module) { module.exports = "game-Screen {\n    display              : -webkit-box;\n    display              : -ms-flexbox;\n    display              : flex;\n    -webkit-box-orient   : vertical;\n    -webkit-box-direction: normal;\n    -ms-flex-direction   : column;\n    flex-direction       : column;\n    -webkit-box-pack     : center;\n    -ms-flex-pack        : center;\n    justify-content      : center;\n    -webkit-box-align    : center;\n    -ms-flex-align       : center;\n    align-items          : center;\n    width                : 100vw;\n    height               : 100vh;\n    position             : relative;\n    overflow             : hidden;\n}\n\n.arena {\n    position        : relative;\n    background-color: black;\n    pointer-events  : auto;\n    overflow        : hidden;\n}\n\n.arena img {\n    position: absolute;\n}\n\n.arena .segment {\n    -webkit-transform-origin: 50% 50%;\n    transform-origin        : 50% 50%;\n}\n\n.arena .snack {\n    width            : 24px;\n    height           : 24px;\n    -webkit-transform: translate(-4px,-4px);\n    transform        : translate(-4px,-4px);\n}\n"; });

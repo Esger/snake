@@ -20,10 +20,10 @@ export class RestartOverlayCustomElement {
     start() {
         if (!this.started) {
             this.ea.publish('start');
-            this.showOverlay = false;
             this.firstGame = false;
             this.started = true;
         }
+        return false;
     }
 
     addEventListeners() {
