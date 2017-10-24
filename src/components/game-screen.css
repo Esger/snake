@@ -15,11 +15,14 @@ game-Screen {
     width                : 100vw;
     height               : 100vh;
     position             : relative;
+    overflow             : hidden;
 }
 
 .arena {
     position        : relative;
     background-color: black;
+    pointer-events  : auto;
+    overflow        : hidden;
 }
 
 .arena img {

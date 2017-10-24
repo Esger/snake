@@ -122,11 +122,15 @@ export class SnakeService {
     hitWall() {
         let head = this.snake.segments[0];
         let wallHit =
-            head.x > this.screenService.limits.right ||
-            head.x < this.screenService.limits.left ||
-            head.y > this.screenService.limits.bottom ||
-            head.y < this.screenService.limits.top;
-        wallHit && (this.ea.publish('die', 'You hit a wall'));
+            head.x > this.limits.right - this.snake.segmentSize ||
+            head.x < this.limits.left ||
+            head.y > this.limits.bottom - this.snake.segmentSize ||
+            head.y < this.limits.top;
+        if (wallHit) {
+            this.ea.publish('die', 'You hit a wall');
+            return true;
+        }
+        return false;
     }
 
     hitSnake() {
@@ -163,10 +167,6 @@ export class SnakeService {
         });
     }
 
-    setCenter() {
-        this.center = this.screenService.canvasCenter;
-    }
-
     minTurnSteps() {
         return Math.ceil(this.snake.segmentSize / this.snake.stepSize) + 1;
     }
@@ -180,7 +180,11 @@ export class SnakeService {
         this.snake.stepSize = 16;
         this.snake.segments = [];
         this.snake.turnSteps = 0;
-        let segment = { x: this.center.x, y: this.center.y };
+        this.limits = this.screenService.getLimits();
+        let center = this.screenService.getCanvasCenter();
+        let segment = {};
+        segment.x = center.x;
+        segment.y = center.y;
         this.snake.segments.push(segment);
     }
 }

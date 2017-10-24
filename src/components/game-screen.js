@@ -5,16 +5,18 @@ import {
 import {
     EventAggregator
 } from 'aurelia-event-aggregator';
+import { TouchService } from '../services/touch-service';
 import { ScreenService } from '../services/screen-service';
 import { SnakeService } from '../services/snake-service';
 import { SnackService } from '../services/snack-service';
 
-@inject(EventAggregator, ScreenService, SnakeService, SnackService)
+@inject(EventAggregator, TouchService, ScreenService, SnakeService, SnackService)
 
 export class GameScreenCustomElement {
 
-    constructor(eventAggregator, screenService, snakeService, snackService) {
+    constructor(eventAggregator, touchService, screenService, snakeService, snackService) {
         this.ea = eventAggregator;
+        this.touchService = touchService;
         this.screenService = screenService;
         this.snakeService = snakeService;
         this.snackService = snackService;
@@ -66,8 +68,8 @@ export class GameScreenCustomElement {
         let targetHeight = this.roundToSpriteSize($body.height() - 48);
         this.$arena.width(targetWidth);
         this.$arena.height(targetHeight);
+        this.touchService.setAreaSize(this.$arena);
         this.screenService.setDomVars(this.$arena);
-        this.snakeService.setCenter();
     }
 
 }
